@@ -31,7 +31,7 @@ export default defineConfig({
 		devLocalData({
 			// JSON exported by a local checkout of the data repository; never part of the build.
 			dir: process.env.DEV_DATA_DIR ?? '../ultimate-gamer-data/data',
-			delayMs: Number(process.env.FIXTURE_DELAY_MS ?? 0)
+			delayMs: Number(process.env.DEV_DATA_DELAY_MS ?? 0)
 		})
 	],
 	test: {

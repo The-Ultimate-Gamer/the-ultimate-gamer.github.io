@@ -10,6 +10,31 @@ This repository holds **only the website**. All tournament data (SQLite database
 - The website builds and deploys even if the data host is offline.
 - No tournament data is committed to, imported by, or bundled into this repository.
 
+> Working with an AI coding agent? Start with [AGENTS.md](AGENTS.md). It lists the architecture rules, conventions and verification steps.
+
+## Quick start
+
+Clone both repositories side by side. The local folder names matter, because the dev server looks for `../ultimate-gamer-data`:
+
+```sh
+mkdir ultimate-gamer && cd ultimate-gamer
+git clone git@github.com:The-Ultimate-Gamer/the-ultimate-gamer.github.io.git ultimate-gamer-website
+git clone git@github.com:The-Ultimate-Gamer/data.git ultimate-gamer-data
+
+# demo data to develop against (fictional, gitignored)
+cd ultimate-gamer-data
+python3 scripts/seed.py --demo --db demo/demo.sqlite
+python3 scripts/export_json.py --db demo/demo.sqlite --out demo/data
+
+# website
+cd ../ultimate-gamer-website
+nvm use            # Node 24 (see .nvmrc)
+npm install
+DEV_DATA_DIR=../ultimate-gamer-data/demo/data npm run dev:local
+```
+
+Open http://localhost:5173/.
+
 ## Tech stack
 
 - [SvelteKit 3](https://svelte.dev/docs/kit) + Svelte 5 (runes) + TypeScript
@@ -39,7 +64,7 @@ python3 scripts/seed.py --demo --db demo/demo.sqlite && python3 scripts/export_j
 DEV_DATA_DIR=../ultimate-gamer-data/demo/data npm run dev:local
 ```
 
-To simulate a slow network, add `FIXTURE_DELAY_MS=1500`.
+To simulate a slow network, add `DEV_DATA_DELAY_MS=1500`.
 
 Other commands:
 
