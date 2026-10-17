@@ -7,7 +7,7 @@ The website reads JSON files published by the separate data repository ([The-Ult
 Every file uses the same wrapper:
 
 ```json
-{ "schemaVersion": 1, "generatedAt": "2026-10-17T08:00:00Z", "data": { } }
+{ "schemaVersion": 1, "generatedAt": "2026-10-17T08:00:00Z", "data": {} }
 ```
 
 - `schemaVersion` (integer). Increase it only for breaking changes. The website rejects versions newer than it supports.
@@ -16,22 +16,23 @@ Every file uses the same wrapper:
 - **Slugs** are lowercase kebab-case (`^[a-z0-9]+(-[a-z0-9]+)*$`). They are stable and used in URLs.
 
 Shared shapes:
+
 - `PlayerRef`, `GameRef` and `TournamentRef` are `{ slug, name }`.
 - `TokenCounts` is `{ doubleDown, nominate }` and counts **remaining** tokens.
 
 ## Files
 
-| Path | `data` shape |
-| --- | --- |
-| `site.json` | `{ name, tagline?, currentTournament?: TournamentRef }` |
-| `leaderboard.json` | Live view of the current tournament (see below) |
-| `categories.json` | `{ categories: [{ slug, name, icon?, description? }] }` |
-| `awards.json` | `{ awards: [{ slug, name, icon?, description?, scope?, recipients?: AwardGrant[] }] }` |
-| `games/index.json` | `{ games: GameInfo[] }` |
-| `players/index.json` | `{ players: PlayerSummary[] }` |
-| `players/{slug}.json` | `{ player: PlayerProfile }` |
-| `tournaments/index.json` | `{ tournaments: TournamentSummary[] }` |
-| `tournaments/{slug}.json` | `{ tournament: TournamentDetail }` |
+| Path                      | `data` shape                                                                                                                                                 |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `site.json`               | `{ name, tagline?, currentTournament?: TournamentRef, demo?: boolean }` (`demo` is true while fictional demo data is published, and the site shows a banner) |
+| `leaderboard.json`        | Live view of the current tournament (see below)                                                                                                              |
+| `categories.json`         | `{ categories: [{ slug, name, icon?, description? }] }`                                                                                                      |
+| `awards.json`             | `{ awards: [{ slug, name, icon?, description?, scope?, recipients?: AwardGrant[] }] }`                                                                       |
+| `games/index.json`        | `{ games: GameInfo[] }`                                                                                                                                      |
+| `players/index.json`      | `{ players: PlayerSummary[] }`                                                                                                                               |
+| `players/{slug}.json`     | `{ player: PlayerProfile }`                                                                                                                                  |
+| `tournaments/index.json`  | `{ tournaments: TournamentSummary[] }`                                                                                                                       |
+| `tournaments/{slug}.json` | `{ tournament: TournamentDetail }`                                                                                                                           |
 
 ### leaderboard.json
 
@@ -60,7 +61,7 @@ Shared shapes:
   - Set `decidedTournament: true` on the game in which a Challenger won the tournament.
 - **GameResultEntry:** `{ player, placement, points, basePoints?, nemesisBonus?, doubleDown?, nemesis?, defeatedNemesis? }`
   - `points` is the final total for that game, including the Double Down multiplier and the Nemesis bonus.
-- **TournamentSummary:** `{ slug, name, edition?, startDate?, endDate?, location?, status: 'upcoming'|'ongoing'|'completed', challengerThreshold?, playerCount?, gamesPlayed?, categoriesCompleted?, categoriesPlanned?, champion?, leaders?: [{ rank, player, points }], awards?: AwardGrant[] }`
+- **TournamentSummary:** `{ slug, name, edition?, startDate?, endDate?, location?, status: 'upcoming'|'ongoing'|'completed', isDemo?, challengerThreshold?, playerCount?, gamesPlayed?, categoriesCompleted?, categoriesPlanned?, champion?, leaders?: [{ rank, player, points }], awards?: AwardGrant[] }`
 - **TournamentDetail:** a `TournamentSummary` plus `{ currentCategory?, currentGame?, nextSelection?, standings, categories, games: GameResult[], records?: [{ label, value, player? }] }`
 - **AwardGrant:** `{ award: slug, player, tournament?, detail? }`
   - `detail` is a human-readable supporting statistic.
@@ -80,6 +81,7 @@ Shared shapes:
 ## Responsibilities
 
 The data repository computes everything authoritative:
+
 - Standings and ranks
 - Challenger and champion flags
 - Award recipients, including tie-breaking

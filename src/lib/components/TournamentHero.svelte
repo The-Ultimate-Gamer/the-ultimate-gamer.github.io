@@ -19,7 +19,7 @@
 </script>
 
 <div class="meta-line">
-	<StatusPill status={tournament.status} />
+	<StatusPill status={tournament.status} demo={tournament.isDemo} />
 	{#if showName}<span class="tournament-name">{tournament.name}</span>{/if}
 	{#if dates}<span class="subtle">{dates}</span>{/if}
 	{#if tournament.location}<span class="subtle">· {tournament.location}</span>{/if}

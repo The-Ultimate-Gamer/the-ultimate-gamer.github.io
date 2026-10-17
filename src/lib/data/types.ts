@@ -43,6 +43,8 @@ export interface SiteData {
 	name: string;
 	tagline?: string | null;
 	currentTournament?: TournamentRef | null;
+	/** True while fictional demo data is published alongside (or instead of) real data. */
+	demo?: boolean;
 }
 
 // ---------------------------------------------------------- categories.json
@@ -192,6 +194,8 @@ export interface TournamentSummary {
 	endDate?: string | null;
 	location?: string | null;
 	status: TournamentStatus;
+	/** Fictional demo tournament. */
+	isDemo?: boolean;
 	challengerThreshold?: number | null;
 	playerCount?: number;
 	gamesPlayed?: number;

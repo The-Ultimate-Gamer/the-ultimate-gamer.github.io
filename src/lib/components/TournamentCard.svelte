@@ -14,7 +14,7 @@
 
 <article class="card" class:done={tournament.status === 'completed'}>
 	<header>
-		<StatusPill status={tournament.status} />
+		<span class="pills"><StatusPill status={tournament.status} demo={tournament.isDemo} /></span>
 		<span class="subtle date">{formatDateRange(tournament.startDate, tournament.endDate)}</span>
 	</header>
 	<h3><a {href}>{tournament.name}</a></h3>
@@ -85,6 +85,11 @@
 		justify-content: space-between;
 		gap: var(--sp-2);
 		flex-wrap: wrap;
+	}
+
+	.pills {
+		display: inline-flex;
+		gap: var(--sp-2);
 	}
 
 	.date,

@@ -3,6 +3,7 @@
 	import favicon from '#lib/assets/favicon.svg';
 	import SiteHeader from '#lib/components/SiteHeader.svelte';
 	import SiteFooter from '#lib/components/SiteFooter.svelte';
+	import DemoBanner from '#lib/components/DemoBanner.svelte';
 	import { refreshIfStale } from '#lib/data/resource.svelte.ts';
 	import { siteConfig } from '#lib/config/site.ts';
 	import type { LayoutProps } from './$types';
@@ -32,6 +33,7 @@
 <a class="skip-link" href="#main">Skip to content</a>
 
 <div class="shell">
+	<DemoBanner />
 	<SiteHeader />
 	<main id="main" tabindex="-1">
 		{@render children()}

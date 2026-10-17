@@ -4,17 +4,24 @@
 
 	interface Props {
 		status: TournamentStatus;
+		demo?: boolean;
 	}
 
-	let { status }: Props = $props();
+	let { status, demo = false }: Props = $props();
 </script>
 
 <span class="pill {status}">
 	<span class="dot" aria-hidden="true"></span>
 	{statusLabel[status]}
 </span>
+{#if demo}<span class="pill demo" title="Fictional demo data">Demo</span>{/if}
 
 <style>
+	.demo {
+		color: var(--c-info);
+		border-style: dashed;
+		border-color: rgb(92 200 255 / 0.5);
+	}
 	.pill {
 		display: inline-flex;
 		align-items: center;
