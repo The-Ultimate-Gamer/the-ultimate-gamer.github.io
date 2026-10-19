@@ -23,7 +23,7 @@ export const awardContent: AwardContent[] = [
 		name: 'Challenger',
 		icon: '⚔️',
 		scope: 'tournament',
-		description: 'Reached the Challenger threshold for the first time.'
+		description: 'Reached the Challenger threshold during the tournament.'
 	},
 	{
 		slug: 'dominator',

@@ -22,8 +22,8 @@
 		<nav aria-label="Footer">
 			<ul>
 				<li><a href={resolve('/rules')}>How it works</a></li>
-				<li><a href={resolve('/tournaments')}>All tournaments</a></li>
-				<li><a href={resolve('/history')}>Hall of champions</a></li>
+				<li><a href={resolve('/players')}>All-time records</a></li>
+				<li><a href={resolve('/tournaments')}>Hall of champions</a></li>
 			</ul>
 		</nav>
 		<p class="source subtle">

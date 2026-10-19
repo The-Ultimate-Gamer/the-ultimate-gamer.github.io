@@ -22,11 +22,16 @@ Shared shapes:
 
 ## Files
 
+Besides the JSON below, the export publishes two kinds of non-JSON files next to it:
+
+- `avatars/<player-slug>.<ext>`: player pictures, referenced by `avatarUrl` as relative paths.
+- `share/players/<slug>/` and `share/tournaments/<slug>/`: HTML pages with link-preview tags that redirect to the website. The website links to them through `shareUrl()` and never reads them.
+
 | Path                      | `data` shape                                                                                                                                                 |
 | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `site.json`               | `{ name, tagline?, currentTournament?: TournamentRef, demo?: boolean }` (`demo` is true while fictional demo data is published, and the site shows a banner) |
 | `leaderboard.json`        | Live view of the current tournament (see below)                                                                                                              |
-| `categories.json`         | `{ categories: [{ slug, name, icon?, description? }] }`                                                                                                      |
+| `categories.json`         | `{ categories: [{ slug, name, icon?, description?, tournamentsUsed? }] }`                                                                                    |
 | `awards.json`             | `{ awards: [{ slug, name, icon?, description?, scope?, recipients?: AwardGrant[] }] }`                                                                       |
 | `games/index.json`        | `{ games: GameInfo[] }`                                                                                                                                      |
 | `players/index.json`      | `{ players: PlayerSummary[] }`                                                                                                                               |
@@ -42,6 +47,7 @@ Shared shapes:
   currentCategory?: slug | null,
   currentGame?: GameRef | null,             // null while not yet revealed
   nextSelection?: GameSelection | null,
+  nextNemeses?: NemesisPair[] | null,       // public Nemesis pairs for the next game; null when not live
   standings: StandingEntry[],
   categories: CategoryProgressEntry[],      // only the categories this tournament uses, in order
   recentResults?: GameResult[]              // newest first; include `tournament` ref
@@ -49,6 +55,9 @@ Shared shapes:
 ```
 
 ### Key types
+
+- **PlayerRef:** `{ slug, name, avatarUrl? }`. `avatarUrl` is present only when the player has a picture (see PlayerSummary).
+- **NemesisPair:** `{ player, nemesis }`. Nemeses are public. Several players can share a Nemesis, and pairs need not be mutual.
 
 - **StandingEntry:**
   - Fields: `{ rank, player, points, isChallenger, challengerSinceGame?, isChampion, tokens?, gamesPlayed?, gamesWon?, categoryWins?: slug[], awards?: slug[], isFirstTournament? }`
@@ -61,15 +70,18 @@ Shared shapes:
   - Set `decidedTournament: true` on the game in which a Challenger won the tournament.
 - **GameResultEntry:** `{ player, placement, points, basePoints?, nemesisBonus?, doubleDown?, nemesis?, defeatedNemesis? }`
   - `points` is the final total for that game, including the Double Down multiplier and the Nemesis bonus.
-- **TournamentSummary:** `{ slug, name, edition?, startDate?, endDate?, location?, status: 'upcoming'|'ongoing'|'completed', isDemo?, challengerThreshold?, playerCount?, gamesPlayed?, categoriesCompleted?, categoriesPlanned?, champion?, leaders?: [{ rank, player, points }], awards?: AwardGrant[] }`
-- **TournamentDetail:** a `TournamentSummary` plus `{ currentCategory?, currentGame?, nextSelection?, standings, categories, games: GameResult[], records?: [{ label, value, player? }] }`
+- **TournamentSummary:** `{ slug, name, edition?, startDate?, endDate?, location?, status: 'upcoming'|'ongoing'|'completed', isDemo?, challengerThreshold?, pointsTable?: [{ placement, points }], playerCount?, gamesPlayed?, categoriesCompleted?, categoriesPlanned?, champion?, leaders?: [{ rank, player, points }], awards?: AwardGrant[] }`
+- **TournamentDetail:** a `TournamentSummary` plus `{ currentCategory?, currentGame?, nextSelection?, nextNemeses?, standings, categories, games: GameResult[], records?: [{ label, value, player? }] }`
 - **AwardGrant:** `{ award: slug, player, tournament?, detail? }`
   - `detail` is a human-readable supporting statistic.
-- **GameInfo:** `{ slug, name, categories: slug[], description?, minPlayers?, maxPlayers?, timesPlayed?, timesNominated?, lastPlayed?: { tournament, gameNumber }, available? }`
+- **GameInfo:** `{ slug, name, categories: slug[], description?, minPlayers?, maxPlayers?, timesPlayed?, timesNominated?, lastPlayed?: { tournament, gameNumber, playedAt? }, available? }`
   - A game may belong to several categories.
-- **PlayerSummary:** `{ slug, name, initials?, avatarUrl? (https only), firstTournament?, tournamentsPlayed?, ultimateGamerWins?, challengerAppearances?, gameWins?, podiumFinishes?, awardCount?, bestPlacement?, current?: { tournament, rank, points } }`
+- **PlayerSummary:** `{ slug, name, initials?, avatarUrl?, firstTournament?, tournamentsPlayed?, ultimateGamerWins?, challengerAppearances?, gameWins?, podiumFinishes?, awardCount?, bestPlacement?, current?: { tournament, rank, points } }`
+  - `avatarUrl` is an `https:` URL, or a path relative to the data URL for pictures hosted with the data (for example `avatars/tnoy.jpg`). Anything else is ignored.
+  - `bestPlacement` is the best final placement (`finish`) in a completed tournament, so the champion counts as 1st.
 - **PlayerProfile:** a `PlayerSummary` plus:
-  - `tournaments?: [{ tournament, startDate?, status, placement?, points?, gamesWon?, wasChallenger?, wasChampion? }]`
+  - `tournaments?: [{ tournament, startDate?, status, placement?, finish?, points?, gamesWon?, podiums?, wasChallenger?, wasChampion? }]`
+    - `placement` is the points rank. `finish` is the final placement once the tournament is over: the champion is 1st and everyone else follows by points. It is null while the tournament is running.
   - `awards?: [{ award, tournament?, detail? }]`
   - `categoryWins?: [{ category, wins }]`
   - `nemesis?: { defeated, defeatedBy, timesAssigned? }`

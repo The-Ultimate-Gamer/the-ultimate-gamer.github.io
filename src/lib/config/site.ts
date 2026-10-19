@@ -25,6 +25,8 @@ export const siteConfig = {
 		/** Minimum gap between automatic refreshes when the tab regains focus. */
 		focusRefreshMinIntervalMs: 60_000,
 		/** Browser HTTP cache mode: 'no-cache' revalidates with the host (ETag) every time. */
-		httpCache: 'no-cache' as RequestCache
+		httpCache: 'no-cache' as RequestCache,
+		/** Warn on a live tournament whose data hasn't changed for this long. */
+		staleLiveAfterMs: 6 * 60 * 60_000
 	}
 } as const;

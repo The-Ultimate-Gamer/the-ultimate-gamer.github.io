@@ -2,9 +2,20 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { Plugin } from 'vite';
 
+/** File types the data repository publishes: JSON, player pictures and share pages. */
+const CONTENT_TYPES: Record<string, string> = {
+	'.json': 'application/json; charset=utf-8',
+	'.html': 'text/html; charset=utf-8',
+	'.jpg': 'image/jpeg',
+	'.jpeg': 'image/jpeg',
+	'.png': 'image/png',
+	'.webp': 'image/webp',
+	'.gif': 'image/gif'
+};
+
 /**
- * Dev-server-only middleware that serves JSON from a local data directory (e.g. a checkout
- * of the data repository) under `/__local-data/`. Never part of a build (`apply: 'serve'`).
+ * Dev-server-only middleware that serves a local data directory (e.g. a checkout of the
+ * data repository) under `/__local-data/`. Never part of a build (`apply: 'serve'`).
  */
 export function devLocalData(options: { dir: string; prefix?: string; delayMs?: number }): Plugin {
 	const root = path.resolve(options.dir);
@@ -22,15 +33,18 @@ export function devLocalData(options: { dir: string; prefix?: string; delayMs?: 
 				} catch {
 					return next();
 				}
+				// Like GitHub Pages, a directory serves its index.html (share pages).
+				if (requested.endsWith('/')) requested += 'index.html';
 				const file = path.resolve(root, `.${requested}`);
+				const type = CONTENT_TYPES[path.extname(file).toLowerCase()];
 				// Prevent path traversal outside the data directory.
-				if (!file.startsWith(root + path.sep) || !file.endsWith('.json')) return next();
+				if (!file.startsWith(root + path.sep) || !type) return next();
 
 				if (delayMs > 0) await new Promise((r) => setTimeout(r, delayMs));
 
 				try {
 					const body = await readFile(file);
-					res.setHeader('Content-Type', 'application/json; charset=utf-8');
+					res.setHeader('Content-Type', type);
 					res.setHeader('Cache-Control', 'no-cache');
 					res.setHeader('Access-Control-Allow-Origin', '*');
 					res.end(body);

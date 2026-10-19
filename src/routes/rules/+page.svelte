@@ -1,14 +1,17 @@
 <script lang="ts">
+	import PageMeta from '#lib/components/PageMeta.svelte';
 	import { resolve } from '$app/paths';
 	import { getLeaderboard } from '#lib/data/client.ts';
 	import { useResource } from '#lib/data/resource.svelte.ts';
-	import { categoryContent } from '#lib/content/categories.ts';
-	import { awardContent } from '#lib/content/awards.ts';
+	import { ordinal } from '#lib/format.ts';
 	import PageTitle from '#lib/components/PageTitle.svelte';
 
-	// Only used to show the live threshold; the rules themselves are static.
+	// Only used to show a real points table as an example; the rules themselves are static.
 	const board = useResource(getLeaderboard);
-	const live = $derived(board.data?.tournament ?? null);
+	const example = $derived(board.data?.tournament ?? null);
+	const pointsTable = $derived(
+		[...(example?.pointsTable ?? [])].sort((a, b) => a.placement - b.placement)
+	);
 
 	const sections = [
 		{ id: 'points', title: 'Points' },
@@ -22,13 +25,10 @@
 	];
 </script>
 
-<svelte:head>
-	<title>Rules · The Ultimate Gamer</title>
-	<meta
-		name="description"
-		content="How The Ultimate Gamer works: points, Challenger status, categories, game selection, tokens, Nemeses and awards."
-	/>
-</svelte:head>
+<PageMeta
+	title="Rules"
+	description="How The Ultimate Gamer works: points, Challenger status, categories, game selection, tokens, Nemeses and awards."
+/>
 
 <div class="container page">
 	<PageTitle
@@ -54,8 +54,26 @@
 				<h2><span class="num">01</span> Points</h2>
 				<p>
 					Everyone starts at <strong>zero</strong>. Each game awards points based on where you
-					finish — the better your result, the more points you earn. Points carry over from game to
-					game for the whole tournament.
+					finish, and points carry over from game to game for the whole tournament. Each tournament
+					publishes its points per place on its page.
+				</p>
+				{#if example && pointsTable.length}
+					<div class="callout points">
+						<span class="eyebrow">Points per place in {example.name}</span>
+						<ol class="points-table">
+							{#each pointsTable as p (p.placement)}
+								<li>
+									<span class="subtle">{ordinal(p.placement)}</span>
+									<strong class="num">{p.points}</strong>
+								</li>
+							{/each}
+						</ol>
+					</div>
+				{/if}
+				<p>
+					On top of that, finishing ahead of your <a href="#nemeses">Nemesis</a> gives
+					<strong>+1 point</strong>, and a <a href="#tokens">Double Down</a> token doubles everything
+					you earn in that game.
 				</p>
 			</section>
 
@@ -63,14 +81,9 @@
 				<h2><span class="num">02</span> Challenger status</h2>
 				<p>
 					Every tournament has a <strong>Challenger threshold</strong>. The moment your total
-					reaches it, you become a <strong class="challenger">Challenger</strong>.
+					reaches it, you become a <strong class="challenger">Challenger</strong>. Each tournament
+					sets its own threshold, shown at the top of its standings.
 				</p>
-				{#if live?.challengerThreshold != null}
-					<p class="callout">
-						<span class="eyebrow">{live.name}</span>
-						Challenger threshold: <strong class="num">{live.challengerThreshold}</strong> points
-					</p>
-				{/if}
 				<p>
 					Becoming a Challenger does <em>not</em> win you the tournament. More than one player can be
 					a Challenger at the same time, and you stay a Challenger until the tournament ends.
@@ -97,15 +110,7 @@
 					revealed. Organisers may set the order, put it to a vote or randomise it — and a
 					tournament doesn’t have to use every category.
 				</p>
-				<ul class="cat-grid">
-					{#each categoryContent as c (c.slug)}
-						<li style:--accent="var(--cat-{c.slug})">
-							<span class="cat-icon" aria-hidden="true">{c.icon}</span>
-							<span class="cat-name">{c.name}</span>
-							<span class="cat-blurb subtle">{c.blurb}</span>
-						</li>
-					{/each}
-				</ul>
+				<a class="btn" href={resolve('/games')}>Browse categories and games</a>
 			</section>
 
 			<section id="selection">
@@ -146,28 +151,29 @@
 			<section id="nemeses">
 				<h2><span class="num">07</span> Nemeses</h2>
 				<p>
-					Before each game, every player is secretly assigned a random <strong>Nemesis</strong> —
-					never themselves. Finish ahead of your Nemesis and you earn
-					<strong>+1 bonus point</strong>. After the game, new Nemeses are drawn.
+					Before each game, every player is assigned a random <strong>Nemesis</strong>. Finish ahead
+					of your Nemesis and you earn <strong>+1 bonus point</strong>. After the game, new Nemeses
+					are drawn.
 				</p>
+				<ul class="facts">
+					<li>
+						<strong>Nemeses are public.</strong> Everyone knows who their Nemesis is, and the pairs are
+						shown with the next game on the tournament page.
+					</li>
+					<li>
+						<strong>Each draw is independent.</strong> You never get yourself, but your Nemesis can have
+						a different Nemesis of their own, and several players can share the same one.
+					</li>
+				</ul>
 			</section>
 
 			<section id="awards">
 				<h2><span class="num">08</span> Awards</h2>
 				<p>
-					Awards celebrate everything beyond the crown. Recipients are decided from the official
-					results.
+					Awards celebrate everything beyond the crown: streaks, rivalries, comebacks and more.
+					Recipients are decided by the organisers from the official results.
 				</p>
-				<ul class="award-list">
-					{#each awardContent as a (a.slug)}
-						<li>
-							<span aria-hidden="true">{a.icon}</span>
-							<strong>{a.name}</strong>
-							<span class="muted">{a.description}</span>
-						</li>
-					{/each}
-				</ul>
-				<a class="btn" href={resolve('/awards')}>See award winners</a>
+				<a class="btn" href={resolve('/awards')}>See all awards and winners</a>
 			</section>
 		</article>
 	</div>
@@ -268,46 +274,41 @@
 		color: var(--c-text);
 	}
 
+	.callout.points {
+		border-color: var(--c-gold-line);
+		background: var(--c-gold-soft);
+	}
+
+	.points-table {
+		list-style: none;
+		margin: var(--sp-2) 0 0;
+		padding: 0;
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--sp-2) var(--sp-5);
+	}
+
+	.points-table li {
+		display: grid;
+		justify-items: center;
+	}
+
+	.callout.points strong {
+		color: var(--c-gold-bright);
+	}
+
+	.facts {
+		margin: 0;
+		padding-left: 1.25rem;
+		display: grid;
+		gap: var(--sp-2);
+		color: var(--c-text-muted);
+		max-width: 68ch;
+	}
+
 	.callout strong {
 		font-size: var(--fs-xl);
 		color: var(--c-challenger);
-	}
-
-	.cat-grid {
-		list-style: none;
-		margin: 0;
-		padding: 0;
-		display: grid;
-		gap: var(--sp-2);
-		grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr));
-	}
-
-	.cat-grid li {
-		display: grid;
-		grid-template-columns: auto 1fr;
-		gap: 0 var(--sp-3);
-		padding: var(--sp-3);
-		background: var(--c-surface);
-		border: var(--border);
-		border-left: 3px solid var(--accent, var(--c-gold));
-		border-radius: var(--radius-md);
-	}
-
-	.cat-icon {
-		grid-row: span 2;
-		font-size: 1.3rem;
-	}
-
-	.cat-name {
-		font-family: var(--font-display);
-		font-weight: 700;
-		text-transform: uppercase;
-		letter-spacing: var(--tracking-wide);
-		font-size: var(--fs-sm);
-	}
-
-	.cat-blurb {
-		font-size: var(--fs-xs);
 	}
 
 	.steps {
@@ -345,21 +346,6 @@
 		text-transform: uppercase;
 		letter-spacing: var(--tracking-wide);
 		color: var(--c-gold-bright);
-	}
-
-	.award-list {
-		list-style: none;
-		margin: 0;
-		padding: 0;
-		display: grid;
-		gap: var(--sp-2);
-		font-size: var(--fs-sm);
-	}
-
-	.award-list li {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 0 var(--sp-2);
 	}
 
 	.btn {

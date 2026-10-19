@@ -43,8 +43,10 @@ All tournament data lives in a **separate repository** ([The-Ultimate-Gamer/data
 
 ## Routing model
 
-- **Prerendered static shells:** `/`, `/players`, `/tournaments`, `/games`, `/awards`, `/history`, `/rules` (`export const prerender = true` in `src/routes/+layout.ts`).
+- **Prerendered static shells:** `/`, `/players`, `/tournaments`, `/games`, `/awards`, `/rules` (`export const prerender = true` in `src/routes/+layout.ts`). `/history` only redirects to `/tournaments` for old links.
+- **Page roles:** `/` is a slim welcome page with a "Watch the live tournament" button. The tournament page (`/tournaments/[slug]`) is the live view: standings, next game, schedule. There is no separate Live page.
 - **Client-rendered dynamic routes:** `/players/[slug]` and `/tournaments/[slug]` have `prerender = false` and are served by the `404.html` fallback on GitHub Pages. Do not try to prerender them, because that would mean fetching data at build time.
+- **Link previews:** chat apps can't preview those dynamic routes (HTTP 404, no data in the HTML). The data repository therefore exports share pages at `<data URL>share/players/<slug>/` and `share/tournaments/<slug>/`, with preview tags and a redirect back here. The Share buttons copy those links.
 - **Static explanatory copy** (rules, award and category descriptions) lives in `src/lib/content/` so it renders without data.
 
 ## Project map
@@ -68,11 +70,15 @@ docs/data-contract.md          JSON contract reference
 ```
 
 **Key components:**
-- `Leaderboard` / `PlayerRow`: the standings table.
-- `TournamentHero`: status and meta tiles.
-- `TournamentProgress`: category timeline.
-- `GameSelectionPanel`: nominations and draw.
-- `RecentResults`: game cards.
+
+- `Leaderboard` / `PlayerRow`: the standings table, with a legend for points, tokens and icons.
+- `TournamentProgress`: category timeline ("Schedule"); played games open in a side panel.
+- `GameSelectionPanel`: nominations and draw. `NemesisPairs`: public Nemeses for the next game.
+- `GameResultDetail`: one game's full results.
+- `Tabs` (accessible tab list) and `SidePanel` (native `<dialog>` drawer) for secondary detail.
+- `StaleNotice`: warns when a live tournament hasn't been updated for a while.
+- `PageMeta`: every page's title, description and link-preview tags (use it instead of a bare `<title>`).
+- `ShareButton`: shares the data repository's preview page for a player or tournament (`shareUrl()` in `client.ts`).
 - `ChampionBanner`.
 - Badges: `StatusBadge`, `CategoryBadge`, `AwardBadge`, `TokenDisplay`, `StatusPill`.
 - States: `DataView`, `LoadingState`, `ErrorState`, `EmptyState`, `NotFoundState`.
@@ -101,12 +107,15 @@ Then run `DEV_DATA_DIR=../ultimate-gamer-data/demo/data npm run dev:local`. Add 
 ## Common tasks
 
 ### Add a page
+
 1. Create `src/routes/<name>/+page.svelte` with a `<svelte:head>` `<title>` and a meta description.
 2. Use `PageTitle`, and load data with `useResource(getX)` wrapped in `DataView`.
 3. Add the nav link in `SiteHeader.svelte` using `resolve()`.
 
 ### Add or change a data field
+
 This change spans **both repositories**:
+
 1. **Data repo:** produce the field in `scripts/ugdata.py` (`Exporter`), and add a test in `tests/`.
 2. **This repo:** add the field to `src/lib/data/types.ts`. Make it optional (`?` / `| null`) unless every document will always have it.
 3. If the field is essential, add a check in `src/lib/data/validate.ts` and a test in `client.spec.ts`.
@@ -114,6 +123,7 @@ This change spans **both repositories**:
 5. **Breaking changes** need a new `schemaVersion`. Bump `SUPPORTED_SCHEMA_VERSION` here first, deploy, then bump `SCHEMA_VERSION` in the data repo. The site rejects newer versions with an "update needed" error.
 
 ### Add a category or award
+
 - Add it to the data repo (`scripts/seed.py` reference data), and optionally add copy and an icon in `src/lib/content/`.
 - For a category colour, add a `--cat-<slug>` token in `tokens.css`. Unknown slugs fall back to a neutral style automatically.
 
@@ -139,7 +149,7 @@ This change spans **both repositories**:
 ## Security
 
 - Render external data as text only. Never use `{@html}` with data.
-- Avatar URLs are accepted only if they are `https:`. Slugs are validated (`isValidSlug`) before being used in URLs. Don't weaken these checks.
+- Avatar URLs are accepted only if they are `https:`, or a relative path that resolves inside the data base URL (pictures hosted with the data, via `avatarSrc()` in `client.ts`). Slugs are validated (`isValidSlug`) before being used in URLs. Don't weaken these checks.
 - Inject CSS custom properties only from sanitised slugs (see `CategoryBadge`).
 
 ## Before you finish a change

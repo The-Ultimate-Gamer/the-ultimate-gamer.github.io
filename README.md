@@ -80,10 +80,10 @@ npm run format    # prettier
 
 The data location is configured in one place: `src/lib/config/site.ts`.
 
-| Source | Value |
-| --- | --- |
-| `PUBLIC_DATA_BASE_URL` env var at build time | e.g. `https://the-ultimate-gamer.github.io/data/` |
-| Fallback in `site.ts` | `DEFAULT_DATA_BASE_URL` = `https://the-ultimate-gamer.github.io/data/` |
+| Source                                       | Value                                                                  |
+| -------------------------------------------- | ---------------------------------------------------------------------- |
+| `PUBLIC_DATA_BASE_URL` env var at build time | e.g. `https://the-ultimate-gamer.github.io/data/`                      |
+| Fallback in `site.ts`                        | `DEFAULT_DATA_BASE_URL` = `https://the-ultimate-gamer.github.io/data/` |
 
 The deploy workflow sets `PUBLIC_DATA_BASE_URL` from the repository variable `DATA_BASE_URL`. If that variable is not set, it falls back to `https://<repo-owner>.github.io/data/`.
 
@@ -144,7 +144,7 @@ The repository is named `the-ultimate-gamer.github.io`, so GitHub serves it as t
 
 ## Routing and known limitations
 
-- **Static pages** (home, players, tournaments, games, awards, history, rules) are prerendered as HTML shells. They include static copy such as the rules and award descriptions. Live data loads on the client.
+- **Static pages** (welcome, players, tournaments, games, awards, rules) are prerendered as HTML shells. They include static copy such as the rules and award descriptions. Live data loads on the client.
 - **Dynamic pages** (`/players/[slug]`, `/tournaments/[slug]`) are not prerendered, because that would require fetching data during the build. GitHub Pages answers those URLs with `404.html`, which boots the app and renders the page client-side. Direct links, refreshes and in-app navigation all work, and unknown slugs show a proper "not found" page.
 - **Consequences of this trade-off:**
   - Dynamic pages are served with **HTTP status 404** even when they render correctly. Crawlers may skip them, and link previews only show generic metadata.

@@ -20,6 +20,8 @@ export type CategoryStatus = 'completed' | 'active' | 'upcoming';
 export interface PlayerRef {
 	slug: Slug;
 	name: string;
+	/** Picture: an https URL, or a path relative to the data URL (e.g. "avatars/tnoy.jpg"). */
+	avatarUrl?: string | null;
 }
 
 export interface GameRef {
@@ -54,6 +56,8 @@ export interface CategoryDefinition {
 	name: string;
 	icon?: string | null;
 	description?: string | null;
+	/** Number of tournaments whose category order includes this category. */
+	tournamentsUsed?: number;
 }
 
 export interface CategoriesData {
@@ -95,7 +99,7 @@ export interface GameInfo {
 	maxPlayers?: number | null;
 	timesPlayed?: number;
 	timesNominated?: number;
-	lastPlayed?: { tournament: TournamentRef; gameNumber: number } | null;
+	lastPlayed?: { tournament: TournamentRef; gameNumber: number; playedAt?: string | null } | null;
 	/** Whether the game is currently eligible for nomination. */
 	available?: boolean;
 }
@@ -174,6 +178,17 @@ export interface GameResult {
 	selection?: GameSelection | null;
 }
 
+/** A Nemesis pair announced for the next game. */
+export interface NemesisPair {
+	player: PlayerRef;
+	nemesis: PlayerRef;
+}
+
+export interface PointsTableEntry {
+	placement: number;
+	points: number;
+}
+
 export interface TournamentLeader {
 	rank: number;
 	player: PlayerRef;
@@ -197,6 +212,8 @@ export interface TournamentSummary {
 	/** Fictional demo tournament. */
 	isDemo?: boolean;
 	challengerThreshold?: number | null;
+	/** Base points per placement. */
+	pointsTable?: PointsTableEntry[];
 	playerCount?: number;
 	gamesPlayed?: number;
 	categoriesCompleted?: number;
@@ -213,6 +230,7 @@ export interface LeaderboardData {
 	currentCategory?: Slug | null;
 	currentGame?: GameRef | null;
 	nextSelection?: GameSelection | null;
+	nextNemeses?: NemesisPair[] | null;
 	standings: StandingEntry[];
 	categories: CategoryProgressEntry[];
 	recentResults?: GameResult[];
@@ -228,6 +246,7 @@ export interface TournamentDetail extends TournamentSummary {
 	currentCategory?: Slug | null;
 	currentGame?: GameRef | null;
 	nextSelection?: GameSelection | null;
+	nextNemeses?: NemesisPair[] | null;
 	standings: StandingEntry[];
 	categories: CategoryProgressEntry[];
 	games: GameResult[];
@@ -244,7 +263,7 @@ export interface PlayerSummary {
 	slug: Slug;
 	name: string;
 	initials?: string | null;
-	/** Absolute https URL. Anything else is ignored. */
+	/** An https URL, or a path relative to the data URL. Resolve with `avatarSrc()`. */
 	avatarUrl?: string | null;
 	firstTournament?: TournamentRef | null;
 	tournamentsPlayed?: number;
@@ -253,6 +272,7 @@ export interface PlayerSummary {
 	gameWins?: number;
 	podiumFinishes?: number;
 	awardCount?: number;
+	/** Best final placement in a completed tournament. The champion counts as 1st. */
 	bestPlacement?: number | null;
 	current?: { tournament: TournamentRef; rank: number; points: number } | null;
 }
@@ -265,9 +285,13 @@ export interface PlayerTournamentEntry {
 	tournament: TournamentRef;
 	startDate?: string | null;
 	status: TournamentStatus;
+	/** Rank by points. */
 	placement?: number | null;
+	/** Final placement once the tournament is over: the champion is 1st, then by points. */
+	finish?: number | null;
 	points?: number;
 	gamesWon?: number;
+	podiums?: number;
 	wasChallenger?: boolean;
 	wasChampion?: boolean;
 }
