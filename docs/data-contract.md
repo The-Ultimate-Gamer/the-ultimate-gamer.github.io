@@ -107,4 +107,4 @@ Category slugs the website knows about: `strategy`, `combat`, `puzzle`, `platfor
 
 Unknown slugs still render, using a neutral fallback icon and name.
 
-The data repository's `scripts/seed.py --demo` generates a complete fictional example dataset.
+The data repository's `ug-admin seed --demo` generates a complete fictional example dataset.

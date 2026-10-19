@@ -23,8 +23,8 @@ git clone git@github.com:The-Ultimate-Gamer/data.git ultimate-gamer-data
 
 # demo data to develop against (fictional, gitignored)
 cd ultimate-gamer-data
-python3 scripts/seed.py --demo --db demo/demo.sqlite
-python3 scripts/export_json.py --db demo/demo.sqlite --out demo/data
+cargo run -q --manifest-path admin/Cargo.toml --no-default-features -- seed --demo --repo demo
+cargo run -q --manifest-path admin/Cargo.toml --no-default-features -- export --repo demo
 
 # website
 cd ../ultimate-gamer-website
@@ -59,7 +59,7 @@ To work with the fictional demo dataset, generate it in the data repository and 
 
 ```sh
 # in the data repository
-python3 scripts/seed.py --demo --db demo/demo.sqlite && python3 scripts/export_json.py --db demo/demo.sqlite --out demo/data
+cargo run -q --manifest-path admin/Cargo.toml --no-default-features -- seed --demo --repo demo && cargo run -q --manifest-path admin/Cargo.toml --no-default-features -- export --repo demo
 # in this repository
 DEV_DATA_DIR=../ultimate-gamer-data/demo/data npm run dev:local
 ```

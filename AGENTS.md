@@ -98,8 +98,8 @@ npm run format      # prettier
 To get rich demo data, generate the fictional dataset in the data repo:
 
 ```sh
-python3 scripts/seed.py --demo --db demo/demo.sqlite
-python3 scripts/export_json.py --db demo/demo.sqlite --out demo/data
+cargo run -q --manifest-path admin/Cargo.toml --no-default-features -- seed --demo --repo demo
+cargo run -q --manifest-path admin/Cargo.toml --no-default-features -- export --repo demo
 ```
 
 Then run `DEV_DATA_DIR=../ultimate-gamer-data/demo/data npm run dev:local`. Add `DEV_DATA_DELAY_MS=1500` to see the loading states.
@@ -116,7 +116,7 @@ Then run `DEV_DATA_DIR=../ultimate-gamer-data/demo/data npm run dev:local`. Add 
 
 This change spans **both repositories**:
 
-1. **Data repo:** produce the field in `scripts/ugdata.py` (`Exporter`), and add a test in `tests/`.
+1. **Data repo:** produce the field in `admin/src/export.rs` (`Exporter`), and add a test in `admin/src/tests.rs`.
 2. **This repo:** add the field to `src/lib/data/types.ts`. Make it optional (`?` / `| null`) unless every document will always have it.
 3. If the field is essential, add a check in `src/lib/data/validate.ts` and a test in `client.spec.ts`.
 4. Document it in `docs/data-contract.md`, then render it, handling its absence.
@@ -124,7 +124,7 @@ This change spans **both repositories**:
 
 ### Add a category or award
 
-- Add it to the data repo (`scripts/seed.py` reference data), and optionally add copy and an icon in `src/lib/content/`.
+- Add it to the data repo (the admin app's Categories & awards page, or `admin/src/seed.rs` for the defaults), and optionally add copy and an icon in `src/lib/content/`.
 - For a category colour, add a `--cat-<slug>` token in `tokens.css`. Unknown slugs fall back to a neutral style automatically.
 
 ## Styling conventions
