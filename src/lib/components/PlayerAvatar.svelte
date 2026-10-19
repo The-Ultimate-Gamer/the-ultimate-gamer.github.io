@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { initials as toInitials } from '#lib/format.ts';
+	import { avatarSrc } from '#lib/data/client.ts';
 
 	interface Props {
 		name: string;
@@ -11,8 +12,8 @@
 
 	let { name, initials, avatarUrl, size = 'md', highlight = null }: Props = $props();
 
-	// Only absolute https images are accepted from external data.
-	const safeAvatar = $derived(avatarUrl && /^https:\/\//i.test(avatarUrl) ? avatarUrl : null);
+	// Only https pictures or pictures hosted with the data are accepted.
+	const safeAvatar = $derived(avatarSrc(avatarUrl));
 	let failed = $state(false);
 
 	// Deterministic hue so players are recognisable without relying on images.

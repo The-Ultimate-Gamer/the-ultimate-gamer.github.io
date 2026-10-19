@@ -39,6 +39,7 @@
 		<div class="player-cell">
 			<PlayerAvatar
 				name={entry.player.name}
+				avatarUrl={entry.player.avatarUrl}
 				size="md"
 				highlight={status === 'contender' ? null : status}
 			/>
@@ -52,6 +53,14 @@
 					{#each (entry.awards ?? []).filter((a) => !STATUS_AWARDS.has(a)) as award (award)}
 						<AwardBadge slug={award} iconOnly />
 					{/each}
+					{#if entry.categoryWins?.length}
+						<!-- The category wins column is hidden on narrow screens; show them here instead. -->
+						<span class="wins-inline">
+							{#each entry.categoryWins as cat, i (`${cat}-${i}`)}
+								<CategoryBadge slug={cat} iconOnly size="sm" />
+							{/each}
+						</span>
+					{/if}
 				</div>
 			</div>
 		</div>
@@ -223,6 +232,11 @@
 		gap: 0.25rem;
 	}
 
+	.wins-inline {
+		display: none;
+		gap: 0.2rem;
+	}
+
 	.tokens {
 		white-space: nowrap;
 		padding-right: var(--sp-5);
@@ -231,6 +245,10 @@
 	@media (max-width: 760px) {
 		.wins {
 			display: none;
+		}
+
+		.wins-inline {
+			display: inline-flex;
 		}
 
 		.rank {

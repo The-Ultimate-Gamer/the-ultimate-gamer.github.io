@@ -142,6 +142,25 @@ describe('data client', () => {
 	});
 });
 
+describe('avatarSrc', () => {
+	const { client } = setup([]);
+
+	it('accepts https pictures and pictures hosted with the data', () => {
+		expect(client.avatarSrc('https://cdn.test/a.jpg')).toBe('https://cdn.test/a.jpg');
+		expect(client.avatarSrc('avatars/tnoy.jpg')).toBe(`${BASE}avatars/tnoy.jpg`);
+	});
+
+	it('rejects other schemes and paths outside the data', () => {
+		expect(client.avatarSrc('http://cdn.test/a.jpg')).toBeNull();
+		expect(client.avatarSrc('javascript:alert(1)')).toBeNull();
+		expect(client.avatarSrc('data:image/png;base64,AAAA')).toBeNull();
+		expect(client.avatarSrc('//evil.test/a.jpg')).toBeNull();
+		expect(client.avatarSrc('/a.jpg')).toBeNull();
+		expect(client.avatarSrc('../a.jpg')).toBeNull();
+		expect(client.avatarSrc(null)).toBeNull();
+	});
+});
+
 describe('isValidSlug', () => {
 	it('accepts kebab-case slugs only', () => {
 		expect(isValidSlug('demo-2026')).toBe(true);

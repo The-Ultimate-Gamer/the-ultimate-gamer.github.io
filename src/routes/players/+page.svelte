@@ -15,7 +15,7 @@
 	<title>Players · The Ultimate Gamer</title>
 	<meta
 		name="description"
-		content="Everyone who has competed in The Ultimate Gamer, with titles, awards and statistics."
+		content="Everyone who has competed in The Ultimate Gamer, with titles, awards and all-time records."
 	/>
 </svelte:head>
 
@@ -39,6 +39,12 @@
 		emptyMessage="No players have been published yet."
 	>
 		{#snippet children({ players })}
+			{@const ranked = [...players].sort(
+				(a, b) =>
+					(b.ultimateGamerWins ?? 0) - (a.ultimateGamerWins ?? 0) ||
+					(b.gameWins ?? 0) - (a.gameWins ?? 0) ||
+					a.name.localeCompare(b.name)
+			)}
 			<ul class="players grid-cards">
 				{#each players as p (p.slug)}
 					{@const titles = p.ultimateGamerWins ?? 0}
@@ -62,16 +68,10 @@
 									<p class="subtle since">Since {p.firstTournament.name}</p>
 								{/if}
 							</div>
-							{#if p.current}
-								<div class="current" title="Current tournament: {p.current.tournament.name}">
-									<span class="num rank">{ordinal(p.current.rank)}</span>
-									<span class="num subtle">{p.current.points} pts</span>
-								</div>
-							{/if}
 						</div>
 						<dl class="mini">
 							<div>
-								<dt>Tournaments</dt>
+								<dt>Played</dt>
 								<dd class="num">{p.tournamentsPlayed ?? '–'}</dd>
 							</div>
 							<div>
@@ -87,13 +87,58 @@
 								<dd class="num">{p.awardCount ?? '–'}</dd>
 							</div>
 							<div>
-								<dt>Best</dt>
+								<dt>Best finish</dt>
 								<dd class="num">{p.bestPlacement ? ordinal(p.bestPlacement) : '–'}</dd>
 							</div>
 						</dl>
 					</li>
 				{/each}
 			</ul>
+
+			<section aria-labelledby="records-title">
+				<h2 id="records-title" class="section-title">All-time records</h2>
+				<div class="panel table-scroll">
+					<table class="data-table">
+						<caption class="visually-hidden"
+							>All-time player records, sorted by titles then game wins</caption
+						>
+						<thead>
+							<tr>
+								<th scope="col">Player</th>
+								<th scope="col">Titles</th>
+								<th scope="col">Challenger</th>
+								<th scope="col">Game wins</th>
+								<th scope="col">Podiums</th>
+								<th scope="col">Tournaments</th>
+								<th scope="col">Awards</th>
+							</tr>
+						</thead>
+						<tbody>
+							{#each ranked as p (p.slug)}
+								<tr>
+									<th scope="row">
+										<a class="player" href={resolve('/players/[slug]', { slug: p.slug })}>
+											<PlayerAvatar
+												name={p.name}
+												initials={p.initials}
+												avatarUrl={p.avatarUrl}
+												size="sm"
+											/>
+											{p.name}
+										</a>
+									</th>
+									<td class="num titles-cell">{p.ultimateGamerWins ?? '–'}</td>
+									<td class="num">{p.challengerAppearances ?? '–'}</td>
+									<td class="num">{p.gameWins ?? '–'}</td>
+									<td class="num">{p.podiumFinishes ?? '–'}</td>
+									<td class="num">{p.tournamentsPlayed ?? '–'}</td>
+									<td class="num">{p.awardCount ?? '–'}</td>
+								</tr>
+							{/each}
+						</tbody>
+					</table>
+				</div>
+			</section>
 		{/snippet}
 	</DataView>
 </div>
@@ -113,6 +158,7 @@
 		background: var(--c-surface);
 		border: var(--border);
 		border-radius: var(--radius-lg);
+		cursor: pointer;
 		transition:
 			border-color var(--t-base),
 			transform var(--t-base) var(--ease-out);
@@ -149,10 +195,13 @@
 		text-decoration: none;
 	}
 
+	/* Make the whole card clickable while keeping a single link in the tab order. */
 	h2 a::after {
 		content: '';
 		position: absolute;
 		inset: 0;
+		z-index: 1;
+		border-radius: inherit;
 	}
 
 	.titles {
@@ -165,44 +214,52 @@
 		font-size: var(--fs-xs);
 	}
 
-	.current {
-		display: grid;
-		justify-items: end;
-		font-size: var(--fs-xs);
-	}
-
-	.rank {
-		font-size: var(--fs-lg);
-		font-weight: 700;
-	}
-
 	.mini {
 		margin: 0;
 		display: grid;
-		grid-template-columns: repeat(5, 1fr);
-		gap: var(--sp-2);
+		grid-template-columns: repeat(auto-fit, minmax(4.25rem, 1fr));
+		gap: var(--sp-3) var(--sp-2);
 		border-top: var(--border);
 		padding-top: var(--sp-3);
 	}
 
 	.mini div {
 		display: grid;
+		align-content: start;
 		gap: 0.1rem;
 		min-width: 0;
 	}
 
 	dt {
-		font-size: 0.6rem;
+		font-size: 0.62rem;
+		line-height: 1.2;
 		text-transform: uppercase;
-		letter-spacing: 0.06em;
+		letter-spacing: 0.04em;
 		color: var(--c-text-subtle);
-		white-space: nowrap;
-		overflow: hidden;
-		text-overflow: ellipsis;
 	}
 
 	dd {
 		margin: 0;
+		font-weight: 700;
+	}
+
+	.section-title {
+		font-size: var(--fs-xl);
+		text-transform: uppercase;
+		letter-spacing: var(--tracking-wide);
+		margin-bottom: var(--sp-4);
+	}
+
+	.player {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--sp-2);
+		font-weight: 600;
+		text-decoration: none;
+	}
+
+	.titles-cell {
+		color: var(--c-gold-bright);
 		font-weight: 700;
 	}
 </style>

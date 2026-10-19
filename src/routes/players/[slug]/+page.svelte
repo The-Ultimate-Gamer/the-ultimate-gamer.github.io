@@ -9,8 +9,10 @@
 	import AwardBadge from '#lib/components/AwardBadge.svelte';
 	import StatusBadge from '#lib/components/StatusBadge.svelte';
 	import LastUpdated from '#lib/components/LastUpdated.svelte';
-	import EmptyState from '#lib/components/EmptyState.svelte';
+	import SidePanel from '#lib/components/SidePanel.svelte';
+	import Tabs from '#lib/components/Tabs.svelte';
 	import { formatDate, ordinal } from '#lib/format.ts';
+	import type { PlayerProfile } from '#lib/data/types.ts';
 	import type { PageProps } from './$types';
 
 	let { params }: PageProps = $props();
@@ -19,8 +21,25 @@
 	const player = $derived(resource.data?.player);
 	const notFound = $derived(resource.error?.kind === 'not-found' && !resource.data);
 
-	const MATCH_LIMIT = 25;
-	let showAllMatches = $state(false);
+	let infoTab = $state('awards');
+	/** Tournament whose match history is shown in the side panel. */
+	let openTournament = $state<string | null>(null);
+
+	/** Group award grants per award for display: "Challenger ×2". */
+	function awardCounts(p: PlayerProfile) {
+		const groups = new Map<string, { award: string; count: number; details: string[] }>();
+		for (const a of p.awards ?? []) {
+			const group = groups.get(a.award) ?? { award: a.award, count: 0, details: [] };
+			group.count++;
+			if (a.detail) group.details.push(a.detail);
+			groups.set(a.award, group);
+		}
+		return [...groups.values()];
+	}
+
+	function awardsIn(p: PlayerProfile, slug: string) {
+		return (p.awards ?? []).filter((a) => a.tournament?.slug === slug);
+	}
 </script>
 
 <svelte:head>
@@ -48,6 +67,9 @@
 
 		{#snippet children({ player: p })}
 			{@const titles = p.ultimateGamerWins ?? 0}
+			{@const grouped = awardCounts(p)}
+			{@const shownTournament = p.tournaments?.find((t) => t.tournament.slug === openTournament)}
+			{@const shownMatches = (p.matches ?? []).filter((m) => m.tournament.slug === openTournament)}
 			<header class="profile-head">
 				<PlayerAvatar
 					name={p.name}
@@ -64,8 +86,10 @@
 							{#if titles > 1}<span class="num times">×{titles}</span>{/if}{/if}
 						{#if p.current}
 							<span class="current">
-								Now <strong class="num">{ordinal(p.current.rank)}</strong> with
-								<strong class="num">{p.current.points}</strong> pts in
+								Live: <strong class="num">{ordinal(p.current.rank)}</strong> in points (<strong
+									class="num">{p.current.points}</strong
+								>
+								pts) in
 								<a href={resolve('/tournaments/[slug]', { slug: p.current.tournament.slug })}
 									>{p.current.tournament.name}</a
 								>
@@ -96,15 +120,9 @@
 					<dd class="stat-value">{p.tournamentsPlayed ?? '–'}</dd>
 				</div>
 				<div class="stat">
-					<dt class="stat-label">Game wins</dt>
-					<dd class="stat-value">{p.gameWins ?? '–'}</dd>
-				</div>
-				<div class="stat">
-					<dt class="stat-label">Podiums</dt>
-					<dd class="stat-value">{p.podiumFinishes ?? '–'}</dd>
-				</div>
-				<div class="stat">
-					<dt class="stat-label">Best finish</dt>
+					<dt class="stat-label" title="Best final placement. The champion counts as 1st.">
+						Best finish
+					</dt>
 					<dd class="stat-value">{p.bestPlacement ? ordinal(p.bestPlacement) : '–'}</dd>
 				</div>
 			</dl>
@@ -117,28 +135,40 @@
 					{#if p.tournaments?.length}
 						{@const maxPts = Math.max(1, ...p.tournaments.map((t) => t.points ?? 0))}
 						<div class="table-scroll">
-							<table class="data-table">
+							<table class="data-table history">
+								<caption class="visually-hidden"
+									>Tournaments played by {p.name}. Open a row for its games.</caption
+								>
 								<thead>
 									<tr>
 										<th scope="col">Tournament</th>
-										<th scope="col">Place</th>
+										<th scope="col" title="Final placement; the champion counts as 1st">Place</th>
 										<th scope="col">Points</th>
-										<th scope="col">Status</th>
+										<th scope="col">Wins</th>
+										<th scope="col">Podiums</th>
+										<th scope="col">Awards</th>
+										<th scope="col"><span class="visually-hidden">Games</span></th>
 									</tr>
 								</thead>
 								<tbody>
 									{#each p.tournaments as t (t.tournament.slug)}
-										<tr>
+										{@const awards = awardsIn(p, t.tournament.slug)}
+										<tr class="clickable" onclick={() => (openTournament = t.tournament.slug)}>
 											<th scope="row">
-												<a href={resolve('/tournaments/[slug]', { slug: t.tournament.slug })}
-													>{t.tournament.name}</a
+												<a
+													href={resolve('/tournaments/[slug]', { slug: t.tournament.slug })}
+													onclick={(e) => e.stopPropagation()}>{t.tournament.name}</a
 												>
 												{#if t.startDate}<span class="subtle date">{formatDate(t.startDate)}</span
 													>{/if}
 											</th>
-											<td class="num">
-												{t.placement ? ordinal(t.placement) : '–'}
-												{#if t.status === 'ongoing'}<span class="subtle live">(live)</span>{/if}
+											<td class="num place">
+												{#if t.status === 'ongoing'}
+													{t.placement ? ordinal(t.placement) : '–'}
+													<span class="subtle live">live</span>
+												{:else}
+													{(t.finish ?? t.placement) ? ordinal((t.finish ?? t.placement)!) : '–'}
+												{/if}
 											</td>
 											<td>
 												<span class="pts-cell">
@@ -150,10 +180,29 @@
 													{/if}
 												</span>
 											</td>
+											<td class="num">{t.gamesWon ?? '–'}</td>
+											<td class="num">{t.podiums ?? '–'}</td>
 											<td>
-												{#if t.wasChampion}<StatusBadge status="champion" size="sm" />
-												{:else if t.wasChallenger}<StatusBadge status="challenger" size="sm" />
-												{:else}<span class="subtle">–</span>{/if}
+												<span class="award-cell">
+													{#each awards as a, i (`${a.award}-${i}`)}
+														<AwardBadge slug={a.award} detail={a.detail} />
+													{:else}
+														<span class="subtle">–</span>
+													{/each}
+												</span>
+											</td>
+											<td class="open-cell">
+												<button
+													class="open"
+													type="button"
+													onclick={(e) => {
+														e.stopPropagation();
+														openTournament = t.tournament.slug;
+													}}
+												>
+													Games <span aria-hidden="true">›</span>
+													<span class="visually-hidden">in {t.tournament.name}</span>
+												</button>
 											</td>
 										</tr>
 									{/each}
@@ -166,53 +215,99 @@
 				</section>
 
 				<div class="side">
-					<section class="panel" aria-labelledby="aw-title">
-						<div class="panel-header"><h2 class="panel-title" id="aw-title">Awards</h2></div>
-						<div class="panel-body">
-							{#if p.awards?.length}
-								<ul class="awards">
-									{#each p.awards as a, i (`${a.award}-${i}`)}
-										<li>
-											<AwardBadge slug={a.award} detail={a.detail} />
-											{#if a.tournament}<span class="subtle">{a.tournament.name}</span>{/if}
-										</li>
-									{/each}
-								</ul>
-							{:else}
-								<p class="subtle">No awards yet.</p>
-							{/if}
-						</div>
+					<section class="panel" aria-label="Awards, category wins and Nemeses">
+						<Tabs
+							label="Awards, category wins and Nemeses"
+							bind:selected={infoTab}
+							tabs={[
+								{ id: 'awards', label: 'Awards', count: p.awards?.length ?? 0 },
+								{ id: 'categories', label: 'Categories', count: p.categoryWins?.length ?? 0 },
+								{ id: 'nemeses', label: 'Nemeses' }
+							]}
+						>
+							{#snippet children(tab)}
+								<div class="panel-body">
+									{#if tab === 'awards'}
+										{#if grouped.length}
+											<ul class="counts">
+												{#each grouped as g (g.award)}
+													<li>
+														<AwardBadge slug={g.award} detail={g.details.join(' · ') || null} />
+														<span class="num">×{g.count}</span>
+													</li>
+												{/each}
+											</ul>
+										{:else}
+											<p class="subtle">No awards yet.</p>
+										{/if}
+									{:else if tab === 'categories'}
+										{#if p.categoryWins?.length}
+											<ul class="counts">
+												{#each p.categoryWins as c (c.category)}
+													<li>
+														<CategoryBadge slug={c.category} /><span class="num">×{c.wins}</span>
+													</li>
+												{/each}
+											</ul>
+										{:else}
+											<p class="subtle">No category wins yet.</p>
+										{/if}
+									{:else if p.nemesis || p.rivals?.length}
+										<div class="nemesis">
+											{#if p.nemesis}
+												<p class="summary">
+													Beat their Nemesis
+													<strong class="num">{p.nemesis.defeated}</strong>
+													{#if p.nemesis.timesAssigned}of
+														<strong class="num">{p.nemesis.timesAssigned}</strong>{/if}
+													times. Beaten <strong class="num">{p.nemesis.defeatedBy}</strong>
+													{p.nemesis.defeatedBy === 1 ? 'time' : 'times'} as someone else’s Nemesis.
+												</p>
+											{/if}
+											{#if p.rivals?.length}
+												<table class="data-table">
+													<caption class="visually-hidden">Nemesis rivalries</caption>
+													<thead>
+														<tr>
+															<th scope="col">Rival</th>
+															<th scope="col" title="Times {p.name} beat them as their Nemesis"
+																>Beat</th
+															>
+															<th scope="col" title="Times they beat {p.name} as their Nemesis"
+																>Beaten by</th
+															>
+														</tr>
+													</thead>
+													<tbody>
+														{#each p.rivals as r (r.player.slug)}
+															<tr>
+																<th scope="row">
+																	<a href={resolve('/players/[slug]', { slug: r.player.slug })}
+																		>{r.player.name}</a
+																	>
+																</th>
+																<td class="num">{r.nemesisWins}</td>
+																<td class="num">{r.nemesisLosses}</td>
+															</tr>
+														{/each}
+													</tbody>
+												</table>
+											{/if}
+										</div>
+									{:else}
+										<p class="subtle">No Nemesis games yet.</p>
+									{/if}
+								</div>
+							{/snippet}
+						</Tabs>
 					</section>
 
-					{#if p.categoryWins?.length}
-						<section class="panel" aria-labelledby="cw-title">
-							<div class="panel-header">
-								<h2 class="panel-title" id="cw-title">Category wins</h2>
-							</div>
-							<ul class="panel-body cat-wins">
-								{#each p.categoryWins as c (c.category)}
-									<li><CategoryBadge slug={c.category} /><span class="num">×{c.wins}</span></li>
-								{/each}
-							</ul>
-						</section>
-					{/if}
-
-					{#if p.nemesis || p.doubleDown || p.nominate}
+					{#if p.doubleDown || p.nominate}
 						<section class="panel" aria-labelledby="tok-title">
 							<div class="panel-header">
-								<h2 class="panel-title" id="tok-title">Nemesis & tokens</h2>
+								<h2 class="panel-title" id="tok-title">Tokens</h2>
 							</div>
 							<dl class="panel-body kv">
-								{#if p.nemesis}
-									<div>
-										<dt>Nemeses defeated</dt>
-										<dd class="num">{p.nemesis.defeated}</dd>
-									</div>
-									<div>
-										<dt>Defeated as Nemesis</dt>
-										<dd class="num">{p.nemesis.defeatedBy}</dd>
-									</div>
-								{/if}
 								{#if p.doubleDown}
 									<div>
 										<dt>Double Downs used</dt>
@@ -239,93 +334,63 @@
 				</div>
 			</div>
 
-			{#if p.rivals?.length}
-				<section class="panel" aria-labelledby="riv-title">
-					<div class="panel-header">
-						<h2 class="panel-title" id="riv-title">Nemesis rivalries</h2>
-					</div>
-					<div class="table-scroll">
-						<table class="data-table">
-							<thead>
-								<tr>
-									<th scope="col">Opponent</th>
-									<th scope="col">Defeated them</th>
-									<th scope="col">Defeated by them</th>
-								</tr>
-							</thead>
-							<tbody>
-								{#each p.rivals as r (r.player.slug)}
+			<SidePanel
+				open={!!shownTournament}
+				eyebrow="{p.name} · match history"
+				title={shownTournament?.tournament.name ?? ''}
+				onclose={() => (openTournament = null)}
+			>
+				{#if shownTournament}
+					{#if shownMatches.length}
+						<div class="table-scroll">
+							<table class="data-table matches">
+								<caption class="visually-hidden"
+									>{p.name}’s games in {shownTournament.tournament.name}</caption
+								>
+								<thead>
 									<tr>
-										<th scope="row">
-											<a href={resolve('/players/[slug]', { slug: r.player.slug })}
-												>{r.player.name}</a
-											>
-										</th>
-										<td class="num">{r.nemesisWins}</td>
-										<td class="num">{r.nemesisLosses}</td>
+										<th scope="col">Game</th>
+										<th scope="col">Place</th>
+										<th scope="col">Points</th>
 									</tr>
-								{/each}
-							</tbody>
-						</table>
-					</div>
-				</section>
-			{/if}
-
-			<section class="panel" aria-labelledby="m-title">
-				<div class="panel-header"><h2 class="panel-title" id="m-title">Match history</h2></div>
-				{#if p.matches?.length}
-					{@const matches = showAllMatches ? p.matches : p.matches.slice(0, MATCH_LIMIT)}
-					<div class="table-scroll">
-						<table class="data-table matches">
-							<thead>
-								<tr>
-									<th scope="col">Game</th>
-									<th scope="col">Category</th>
-									<th scope="col">Place</th>
-									<th scope="col">Points</th>
-									<th scope="col">Notes</th>
-								</tr>
-							</thead>
-							<tbody>
-								{#each matches as m (`${m.tournament.slug}-${m.gameNumber}`)}
-									<tr class:won={m.placement === 1}>
-										<th scope="row">
-											<a
-												href="{resolve('/tournaments/[slug]', {
-													slug: m.tournament.slug
-												})}#game-{m.gameNumber}">{m.game.name}</a
-											>
-											<span class="subtle date">{m.tournament.name} · #{m.gameNumber}</span>
-										</th>
-										<td><CategoryBadge slug={m.category} size="sm" /></td>
-										<td class="num place">{ordinal(m.placement)}</td>
-										<td class="num">+{m.points}</td>
-										<td class="notes">
-											{#if m.doubleDown}<span class="note dd">Double Down</span>{/if}
-											{#if m.defeatedNemesis && m.nemesis}
-												<span class="note nem">Beat Nemesis {m.nemesis.name}</span>
-											{:else if m.nemesis}
-												<span class="subtle">Nemesis: {m.nemesis.name}</span>
-											{/if}
-										</td>
-									</tr>
-								{/each}
-							</tbody>
-						</table>
-					</div>
-					{#if p.matches.length > MATCH_LIMIT}
-						<div class="panel-body more">
-							<button class="btn" onclick={() => (showAllMatches = !showAllMatches)}>
-								{showAllMatches ? 'Show fewer' : `Show all ${p.matches.length} games`}
-							</button>
+								</thead>
+								<tbody>
+									{#each shownMatches as m (`${m.tournament.slug}-${m.gameNumber}`)}
+										<tr class:won={m.placement === 1}>
+											<th scope="row">
+												<a
+													href="{resolve('/tournaments/[slug]', {
+														slug: m.tournament.slug
+													})}#game-{m.gameNumber}">{m.game.name}</a
+												>
+												<span class="game-meta">
+													<span class="subtle num">#{m.gameNumber}</span>
+													<CategoryBadge slug={m.category} size="sm" iconOnly />
+													{#if m.doubleDown}<span class="note dd">Double Down</span>{/if}
+													{#if m.defeatedNemesis && m.nemesis}
+														<span class="note nem">Beat Nemesis {m.nemesis.name}</span>
+													{:else if m.nemesis}
+														<span class="subtle">Nemesis: {m.nemesis.name}</span>
+													{/if}
+												</span>
+											</th>
+											<td class="num place">{ordinal(m.placement)}</td>
+											<td class="num">+{m.points}</td>
+										</tr>
+									{/each}
+								</tbody>
+							</table>
 						</div>
+					{:else}
+						<p class="subtle">No games recorded in this tournament yet.</p>
 					{/if}
-				{:else}
-					<div class="panel-body">
-						<EmptyState title="No matches recorded" message="Game results will appear here." />
-					</div>
+					<a
+						class="btn"
+						href={resolve('/tournaments/[slug]', { slug: shownTournament.tournament.slug })}
+						>Open {shownTournament.tournament.name}</a
+					>
 				{/if}
-			</section>
+			</SidePanel>
 		{/snippet}
 	</DataView>
 </div>
@@ -352,7 +417,7 @@
 
 	.id {
 		flex: 1;
-		min-width: 14rem;
+		min-width: min(100%, 14rem);
 		display: grid;
 		gap: var(--sp-2);
 	}
@@ -399,12 +464,13 @@
 	.cols {
 		display: grid;
 		gap: var(--sp-5);
-		grid-template-columns: minmax(0, 1fr) minmax(16rem, 22rem);
+		grid-template-columns: minmax(0, 1fr) minmax(16rem, 24rem);
 		align-items: start;
 	}
 
 	.side {
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		gap: var(--sp-5);
 	}
 
@@ -417,14 +483,28 @@
 		text-decoration: none;
 	}
 
+	.clickable {
+		cursor: pointer;
+		transition: background var(--t-fast);
+	}
+
+	.clickable:hover {
+		background: rgb(255 255 255 / 0.03);
+	}
+
 	.date {
 		display: block;
 		font-size: var(--fs-xs);
 		font-weight: 400;
 	}
 
+	.place {
+		white-space: nowrap;
+	}
+
 	.live {
 		font-size: var(--fs-xs);
+		font-family: var(--font-sans);
 	}
 
 	.pts-cell {
@@ -434,7 +514,7 @@
 	}
 
 	.spark {
-		width: 5rem;
+		width: 4rem;
 		height: 4px;
 		background: var(--c-surface-3);
 		border-radius: 2px;
@@ -447,25 +527,61 @@
 		background: var(--c-gold);
 	}
 
-	.awards,
-	.cat-wins {
+	.award-cell {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.25rem;
+	}
+
+	.open-cell {
+		text-align: right;
+	}
+
+	.open {
+		padding: 0.25rem 0.5rem;
+		background: none;
+		border: var(--border-strong);
+		border-radius: var(--radius-sm);
+		font-size: var(--fs-xs);
+		font-weight: 600;
+		color: var(--c-text-muted);
+		white-space: nowrap;
+		cursor: pointer;
+	}
+
+	.open:hover {
+		color: var(--c-gold-bright);
+		border-color: var(--c-gold-line);
+	}
+
+	.counts {
 		list-style: none;
 		margin: 0;
+		padding: 0;
 		display: grid;
 		gap: var(--sp-2);
 	}
 
-	.awards {
-		padding: 0;
-	}
-
-	.awards li,
-	.cat-wins li {
+	.counts li {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
 		gap: var(--sp-2);
-		font-size: var(--fs-xs);
+		font-size: var(--fs-sm);
+	}
+
+	.nemesis {
+		display: grid;
+		gap: var(--sp-4);
+	}
+
+	.summary {
+		font-size: var(--fs-sm);
+		color: var(--c-text-muted);
+	}
+
+	.summary strong {
+		color: var(--c-text);
 	}
 
 	.kv {
@@ -488,19 +604,24 @@
 		font-weight: 700;
 	}
 
+	.game-meta {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.3rem;
+		margin-top: 0.2rem;
+		font-size: var(--fs-xs);
+		font-weight: 400;
+	}
+
 	.won .place {
 		color: var(--c-gold);
 		font-weight: 700;
 	}
 
-	.notes {
-		font-size: var(--fs-xs);
-	}
-
 	.note {
 		display: inline-block;
 		padding: 0.05rem 0.35rem;
-		margin-right: 0.25rem;
 		border-radius: var(--radius-sm);
 		font-weight: 600;
 	}
@@ -515,8 +636,8 @@
 		color: var(--c-violet);
 	}
 
-	.more {
-		border-top: var(--border);
+	.btn {
+		justify-self: start;
 	}
 
 	@media (max-width: 1000px) {

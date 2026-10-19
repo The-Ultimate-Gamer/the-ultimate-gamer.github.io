@@ -15,7 +15,7 @@
 		<li>
 			<span class="step num">01</span>
 			<p class="title">Score points</p>
-			<p class="muted">Every game awards points. Beat your secret Nemesis for a bonus point.</p>
+			<p class="muted">Every game awards points. Finish ahead of your Nemesis for a bonus point.</p>
 		</li>
 		<li>
 			<span class="step num">02</span>

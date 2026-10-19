@@ -168,8 +168,21 @@ export function createDataClient(options: DataClientOptions) {
 		return load(path(slug), validate, opts);
 	}
 
+	/**
+	 * Resolve a player picture from the data. Only https pictures, and pictures hosted next
+	 * to the data (relative paths), are accepted; anything else returns null.
+	 */
+	function avatarSrc(value: string | null | undefined): string | null {
+		if (!value) return null;
+		if (/^https:\/\//i.test(value)) return value;
+		if (/^[a-z][a-z0-9+.-]*:|^\/\/|^\/|\.\./i.test(value)) return null;
+		const resolved = resolveUrl(value);
+		return resolved.startsWith(resolveUrl('')) ? resolved : null;
+	}
+
 	return {
 		resolveUrl,
+		avatarSrc,
 		/** Drop all cached responses so the next request goes to the network. */
 		clearCache: () => cache.clear(),
 		getSiteConfig: (o?: LoadOptions) => load(dataPaths.site(), validators.site, o),
@@ -197,6 +210,7 @@ export const dataClient: DataClient = createDataClient({
 });
 
 export const {
+	avatarSrc,
 	getSiteConfig,
 	getLeaderboard,
 	getCategories,

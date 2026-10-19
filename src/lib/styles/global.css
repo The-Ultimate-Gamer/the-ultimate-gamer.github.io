@@ -226,6 +226,8 @@ table {
 .page {
 	padding-block: var(--sp-6) var(--sp-8);
 	display: grid;
+	/* minmax(0, …) lets wide tables scroll inside .table-scroll instead of widening the page. */
+	grid-template-columns: minmax(0, 1fr);
 	gap: var(--sp-6);
 }
 
@@ -309,6 +311,8 @@ table {
 }
 
 .table-scroll {
+	/* Positioned so absolutely positioned children (e.g. .visually-hidden) are clipped too. */
+	position: relative;
 	overflow-x: auto;
 	max-width: 100%;
 }

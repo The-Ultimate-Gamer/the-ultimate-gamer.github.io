@@ -5,12 +5,10 @@
 	import { siteConfig } from '#lib/config/site.ts';
 
 	const links = [
-		{ href: resolve('/'), label: 'Live' },
-		{ href: resolve('/players'), label: 'Players' },
 		{ href: resolve('/tournaments'), label: 'Tournaments' },
+		{ href: resolve('/players'), label: 'Players' },
 		{ href: resolve('/games'), label: 'Games' },
 		{ href: resolve('/awards'), label: 'Awards' },
-		{ href: resolve('/history'), label: 'History' },
 		{ href: resolve('/rules'), label: 'Rules' }
 	];
 	const home = resolve('/');

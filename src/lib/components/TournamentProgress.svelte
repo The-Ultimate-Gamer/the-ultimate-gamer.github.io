@@ -5,9 +5,11 @@
 
 	interface Props {
 		categories: CategoryProgressEntry[];
+		/** Open a played game's full results. */
+		onselect?: (gameNumber: number) => void;
 	}
 
-	let { categories }: Props = $props();
+	let { categories, onselect }: Props = $props();
 
 	const items = $derived([...categories].sort((a, b) => a.order - b.order));
 
@@ -33,7 +35,14 @@
 				</p>
 				{#if item.game || item.winner}
 					<p class="detail">
-						{#if item.game}<span class="game">{item.game.name}</span>{/if}
+						{#if item.game && item.status === 'completed' && item.gameNumber && onselect}
+							{@const number = item.gameNumber}
+							<button class="game open" type="button" onclick={() => onselect(number)}
+								>{item.game.name} <span class="subtle" aria-hidden="true">›</span><span
+									class="visually-hidden">: show results</span
+								></button
+							>
+						{:else if item.game}<span class="game">{item.game.name}</span>{/if}
 						{#if item.winner}
 							<span class="winner">
 								<span aria-hidden="true">🏆</span>
@@ -157,6 +166,23 @@
 		margin-top: 0.15rem;
 		font-size: var(--fs-sm);
 		color: var(--c-text-muted);
+	}
+
+	.open {
+		padding: 0;
+		background: none;
+		border: 0;
+		color: var(--c-text);
+		font-weight: 600;
+		text-align: left;
+		cursor: pointer;
+		text-decoration: underline;
+		text-decoration-color: var(--c-gold-line);
+		text-underline-offset: 0.2em;
+	}
+
+	.open:hover {
+		color: var(--c-gold-bright);
 	}
 
 	.winner a {
