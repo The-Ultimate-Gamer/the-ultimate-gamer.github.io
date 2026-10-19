@@ -161,6 +161,19 @@ describe('avatarSrc', () => {
 	});
 });
 
+describe('shareUrl', () => {
+	const { client } = setup([]);
+
+	it('points to the share pages next to the data', () => {
+		expect(client.shareUrl('player', 'tnoy')).toBe(`${BASE}share/players/tnoy/`);
+		expect(client.shareUrl('tournament', 'demo-2026')).toBe(`${BASE}share/tournaments/demo-2026/`);
+	});
+
+	it('refuses invalid slugs', () => {
+		expect(client.shareUrl('player', '../site')).toBeNull();
+	});
+});
+
 describe('isValidSlug', () => {
 	it('accepts kebab-case slugs only', () => {
 		expect(isValidSlug('demo-2026')).toBe(true);

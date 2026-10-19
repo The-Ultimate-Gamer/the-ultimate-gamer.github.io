@@ -1,4 +1,5 @@
 <script lang="ts">
+	import PageMeta from '#lib/components/PageMeta.svelte';
 	import { resolve } from '$app/paths';
 	import { getCategories, getGames } from '#lib/data/client.ts';
 	import { useResource } from '#lib/data/resource.svelte.ts';
@@ -110,13 +111,10 @@
 	}
 </script>
 
-<svelte:head>
-	<title>Games & categories · The Ultimate Gamer</title>
-	<meta
-		name="description"
-		content="Browse the games of The Ultimate Gamer by category: played, available and never-picked titles."
-	/>
-</svelte:head>
+<PageMeta
+	title="Games & categories"
+	description="Browse the games of The Ultimate Gamer by category: played, available and never-picked titles."
+/>
 
 <div class="container page">
 	<PageTitle

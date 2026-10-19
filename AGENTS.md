@@ -46,6 +46,7 @@ All tournament data lives in a **separate repository** ([The-Ultimate-Gamer/data
 - **Prerendered static shells:** `/`, `/players`, `/tournaments`, `/games`, `/awards`, `/rules` (`export const prerender = true` in `src/routes/+layout.ts`). `/history` only redirects to `/tournaments` for old links.
 - **Page roles:** `/` is a slim welcome page with a "Watch the live tournament" button. The tournament page (`/tournaments/[slug]`) is the live view: standings, next game, schedule. There is no separate Live page.
 - **Client-rendered dynamic routes:** `/players/[slug]` and `/tournaments/[slug]` have `prerender = false` and are served by the `404.html` fallback on GitHub Pages. Do not try to prerender them, because that would mean fetching data at build time.
+- **Link previews:** chat apps can't preview those dynamic routes (HTTP 404, no data in the HTML). The data repository therefore exports share pages at `<data URL>share/players/<slug>/` and `share/tournaments/<slug>/`, with preview tags and a redirect back here. The Share buttons copy those links.
 - **Static explanatory copy** (rules, award and category descriptions) lives in `src/lib/content/` so it renders without data.
 
 ## Project map
@@ -76,6 +77,8 @@ docs/data-contract.md          JSON contract reference
 - `GameResultDetail`: one game's full results.
 - `Tabs` (accessible tab list) and `SidePanel` (native `<dialog>` drawer) for secondary detail.
 - `StaleNotice`: warns when a live tournament hasn't been updated for a while.
+- `PageMeta`: every page's title, description and link-preview tags (use it instead of a bare `<title>`).
+- `ShareButton`: shares the data repository's preview page for a player or tournament (`shareUrl()` in `client.ts`).
 - `ChampionBanner`.
 - Badges: `StatusBadge`, `CategoryBadge`, `AwardBadge`, `TokenDisplay`, `StatusPill`.
 - States: `DataView`, `LoadingState`, `ErrorState`, `EmptyState`, `NotFoundState`.

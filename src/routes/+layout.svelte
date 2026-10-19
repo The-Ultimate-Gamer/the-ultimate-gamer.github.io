@@ -25,7 +25,6 @@
 
 <svelte:head>
 	<link rel="icon" href={favicon} />
-	<meta name="description" content={siteConfig.description} />
 	<meta name="theme-color" content="#09090b" />
 	<meta property="og:site_name" content={siteConfig.name} />
 </svelte:head>

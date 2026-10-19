@@ -1,4 +1,5 @@
 <script lang="ts">
+	import PageMeta from '#lib/components/PageMeta.svelte';
 	import { resolve } from '$app/paths';
 	import { getTournaments } from '#lib/data/client.ts';
 	import { useResource } from '#lib/data/resource.svelte.ts';
@@ -20,13 +21,10 @@
 	}
 </script>
 
-<svelte:head>
-	<title>Tournaments · The Ultimate Gamer</title>
-	<meta
-		name="description"
-		content="Every edition of The Ultimate Gamer LAN tournament: live standings, champions and results."
-	/>
-</svelte:head>
+<PageMeta
+	title="Tournaments"
+	description="Every edition of The Ultimate Gamer LAN tournament: live standings, champions and results."
+/>
 
 <div class="container page">
 	<PageTitle

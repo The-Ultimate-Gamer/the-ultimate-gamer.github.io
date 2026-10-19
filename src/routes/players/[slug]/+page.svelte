@@ -1,4 +1,5 @@
 <script lang="ts">
+	import PageMeta from '#lib/components/PageMeta.svelte';
 	import { resolve } from '$app/paths';
 	import { getPlayer } from '#lib/data/client.ts';
 	import { useResource } from '#lib/data/resource.svelte.ts';
@@ -10,6 +11,7 @@
 	import StatusBadge from '#lib/components/StatusBadge.svelte';
 	import LastUpdated from '#lib/components/LastUpdated.svelte';
 	import SidePanel from '#lib/components/SidePanel.svelte';
+	import ShareButton from '#lib/components/ShareButton.svelte';
 	import Tabs from '#lib/components/Tabs.svelte';
 	import { formatDate, ordinal } from '#lib/format.ts';
 	import type { PlayerProfile } from '#lib/data/types.ts';
@@ -42,11 +44,12 @@
 	}
 </script>
 
-<svelte:head>
-	<title
-		>{player ? player.name : notFound ? 'Player not found' : 'Player'} · The Ultimate Gamer</title
-	>
-</svelte:head>
+<PageMeta
+	title={player ? player.name : notFound ? 'Player not found' : params.slug}
+	description={player
+		? `${player.name} on The Ultimate Gamer: titles, tournament history, awards and Nemesis rivalries.`
+		: undefined}
+/>
 
 <div class="container page">
 	<nav class="crumbs" aria-label="Breadcrumb">
@@ -98,6 +101,7 @@
 					</div>
 				</div>
 				<div class="head-actions">
+					<ShareButton kind="player" slug={p.slug} title="{p.name} · The Ultimate Gamer" />
 					<LastUpdated
 						generatedAt={resource.generatedAt}
 						refreshing={resource.refreshing}
@@ -447,6 +451,13 @@
 
 	.current {
 		color: var(--c-text-muted);
+	}
+
+	.head-actions {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: var(--sp-3);
 	}
 
 	.stat.gold .stat-value {

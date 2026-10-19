@@ -1,4 +1,5 @@
 <script lang="ts">
+	import PageMeta from '#lib/components/PageMeta.svelte';
 	import { resolve } from '$app/paths';
 	import { getAwards } from '#lib/data/client.ts';
 	import { useResource } from '#lib/data/resource.svelte.ts';
@@ -59,13 +60,10 @@
 	}
 </script>
 
-<svelte:head>
-	<title>Awards · The Ultimate Gamer</title>
-	<meta
-		name="description"
-		content="The awards of The Ultimate Gamer, from Ultimate Gamer and Challenger to Ghost and Survivor."
-	/>
-</svelte:head>
+<PageMeta
+	title="Awards"
+	description="The awards of The Ultimate Gamer, from Ultimate Gamer and Challenger to Ghost and Survivor."
+/>
 
 <div class="container page">
 	<PageTitle

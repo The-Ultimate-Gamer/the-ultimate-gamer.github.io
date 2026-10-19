@@ -1,4 +1,5 @@
 <script lang="ts">
+	import PageMeta from '#lib/components/PageMeta.svelte';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import { getTournament } from '#lib/data/client.ts';
@@ -18,6 +19,7 @@
 	import LastUpdated from '#lib/components/LastUpdated.svelte';
 	import EmptyState from '#lib/components/EmptyState.svelte';
 	import SidePanel from '#lib/components/SidePanel.svelte';
+	import ShareButton from '#lib/components/ShareButton.svelte';
 	import Tabs from '#lib/components/Tabs.svelte';
 	import type { PageProps } from './$types';
 
@@ -39,10 +41,12 @@
 	const shownGame = $derived(t?.games.find((g) => g.number === openGame) ?? null);
 </script>
 
-<svelte:head>
-	<title>{t ? t.name : notFound ? 'Tournament not found' : 'Tournament'} · The Ultimate Gamer</title
-	>
-</svelte:head>
+<PageMeta
+	title={t ? t.name : notFound ? 'Tournament not found' : params.slug}
+	description={t
+		? `${t.name}: standings, schedule and results of The Ultimate Gamer LAN tournament.`
+		: undefined}
+/>
 
 <div class="container page">
 	<nav class="crumbs" aria-label="Breadcrumb">
@@ -68,7 +72,14 @@
 			{@const recordCount = (tournament.awards?.length ?? 0) + (tournament.records?.length ?? 0)}
 			<header class="head">
 				<p class="eyebrow">{tournament.edition ?? 'Tournament'}</p>
-				<h1>{tournament.name}</h1>
+				<div class="title-row">
+					<h1>{tournament.name}</h1>
+					<ShareButton
+						kind="tournament"
+						slug={tournament.slug}
+						title="{tournament.name} · The Ultimate Gamer"
+					/>
+				</div>
 				<p class="meta">
 					<StatusPill status={tournament.status} demo={tournament.isDemo} />
 					{#if dates}<span class="subtle">{dates}</span>{/if}
@@ -260,6 +271,14 @@
 		font-size: var(--fs-3xl);
 		text-transform: uppercase;
 		overflow-wrap: anywhere;
+	}
+
+	.title-row {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: space-between;
+		gap: var(--sp-3);
 	}
 
 	.meta {

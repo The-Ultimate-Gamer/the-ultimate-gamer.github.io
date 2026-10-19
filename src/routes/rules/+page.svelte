@@ -1,4 +1,5 @@
 <script lang="ts">
+	import PageMeta from '#lib/components/PageMeta.svelte';
 	import { resolve } from '$app/paths';
 	import { getLeaderboard } from '#lib/data/client.ts';
 	import { useResource } from '#lib/data/resource.svelte.ts';
@@ -24,13 +25,10 @@
 	];
 </script>
 
-<svelte:head>
-	<title>Rules · The Ultimate Gamer</title>
-	<meta
-		name="description"
-		content="How The Ultimate Gamer works: points, Challenger status, categories, game selection, tokens, Nemeses and awards."
-	/>
-</svelte:head>
+<PageMeta
+	title="Rules"
+	description="How The Ultimate Gamer works: points, Challenger status, categories, game selection, tokens, Nemeses and awards."
+/>
 
 <div class="container page">
 	<PageTitle

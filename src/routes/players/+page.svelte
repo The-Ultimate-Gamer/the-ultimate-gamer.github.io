@@ -1,4 +1,5 @@
 <script lang="ts">
+	import PageMeta from '#lib/components/PageMeta.svelte';
 	import { resolve } from '$app/paths';
 	import { getPlayers } from '#lib/data/client.ts';
 	import { useResource } from '#lib/data/resource.svelte.ts';
@@ -11,13 +12,10 @@
 	const resource = useResource(getPlayers);
 </script>
 
-<svelte:head>
-	<title>Players · The Ultimate Gamer</title>
-	<meta
-		name="description"
-		content="Everyone who has competed in The Ultimate Gamer, with titles, awards and all-time records."
-	/>
-</svelte:head>
+<PageMeta
+	title="Players"
+	description="Everyone who has competed in The Ultimate Gamer, with titles, awards and all-time records."
+/>
 
 <div class="container page">
 	<PageTitle eyebrow="Roster" title="Players" lead="Everyone who has competed for the crown.">

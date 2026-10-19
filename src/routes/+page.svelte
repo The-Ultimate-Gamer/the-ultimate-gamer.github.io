@@ -1,6 +1,6 @@
 <script lang="ts">
+	import PageMeta from '#lib/components/PageMeta.svelte';
 	import { resolve } from '$app/paths';
-	import { siteConfig } from '#lib/config/site.ts';
 	import { getSiteConfig } from '#lib/data/client.ts';
 	import { useResource } from '#lib/data/resource.svelte.ts';
 	import HowItWorks from '#lib/components/HowItWorks.svelte';
@@ -10,9 +10,7 @@
 	const live = $derived(site.data?.currentTournament ?? null);
 </script>
 
-<svelte:head>
-	<title>{siteConfig.name} · Multi-game LAN tournament</title>
-</svelte:head>
+<PageMeta title="Multi-game LAN tournament" />
 
 <div class="container page home">
 	<section class="hero" aria-labelledby="hero-title">

@@ -22,6 +22,11 @@ Shared shapes:
 
 ## Files
 
+Besides the JSON below, the export publishes two kinds of non-JSON files next to it:
+
+- `avatars/<player-slug>.<ext>`: player pictures, referenced by `avatarUrl` as relative paths.
+- `share/players/<slug>/` and `share/tournaments/<slug>/`: HTML pages with link-preview tags that redirect to the website. The website links to them through `shareUrl()` and never reads them.
+
 | Path                      | `data` shape                                                                                                                                                 |
 | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `site.json`               | `{ name, tagline?, currentTournament?: TournamentRef, demo?: boolean }` (`demo` is true while fictional demo data is published, and the site shows a banner) |
