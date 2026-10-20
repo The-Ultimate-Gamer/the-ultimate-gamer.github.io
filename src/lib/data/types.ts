@@ -195,12 +195,6 @@ export interface TournamentLeader {
 	points: number;
 }
 
-export interface TournamentRecord {
-	label: string;
-	value: string;
-	player?: PlayerRef | null;
-}
-
 export interface TournamentSummary {
 	slug: Slug;
 	name: string;
@@ -250,7 +244,6 @@ export interface TournamentDetail extends TournamentSummary {
 	standings: StandingEntry[];
 	categories: CategoryProgressEntry[];
 	games: GameResult[];
-	records?: TournamentRecord[];
 }
 
 export interface TournamentData {

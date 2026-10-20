@@ -171,7 +171,8 @@
 				<h2><span class="num">08</span> Awards</h2>
 				<p>
 					Awards celebrate everything beyond the crown: streaks, rivalries, comebacks and more.
-					Recipients are decided by the organisers from the official results.
+					They're granted automatically from the official results, and everyone tied for an award
+					gets it.
 				</p>
 				<a class="btn" href={resolve('/awards')}>See all awards and winners</a>
 			</section>

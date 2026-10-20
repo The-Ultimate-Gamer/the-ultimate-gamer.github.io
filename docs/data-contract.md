@@ -24,7 +24,7 @@ Shared shapes:
 
 Besides the JSON below, the export publishes two kinds of non-JSON files next to it:
 
-- `avatars/<player-slug>.<ext>`: player pictures, referenced by `avatarUrl` as relative paths.
+- `avatars/<player-slug>.<ext>` and `avatars/<player-slug>.discord.png`: player pictures (uploaded, or copied from Discord), referenced by `avatarUrl` as relative paths.
 - `share/players/<slug>/` and `share/tournaments/<slug>/`: HTML pages with link-preview tags that redirect to the website. The website links to them through `shareUrl()` and never reads them.
 
 | Path                      | `data` shape                                                                                                                                                 |
@@ -71,15 +71,15 @@ Besides the JSON below, the export publishes two kinds of non-JSON files next to
 - **GameResultEntry:** `{ player, placement, points, basePoints?, nemesisBonus?, doubleDown?, nemesis?, defeatedNemesis? }`
   - `points` is the final total for that game, including the Double Down multiplier and the Nemesis bonus.
 - **TournamentSummary:** `{ slug, name, edition?, startDate?, endDate?, location?, status: 'upcoming'|'ongoing'|'completed', isDemo?, challengerThreshold?, pointsTable?: [{ placement, points }], playerCount?, gamesPlayed?, categoriesCompleted?, categoriesPlanned?, champion?, leaders?: [{ rank, player, points }], awards?: AwardGrant[] }`
-- **TournamentDetail:** a `TournamentSummary` plus `{ currentCategory?, currentGame?, nextSelection?, nextNemeses?, standings, categories, games: GameResult[], records?: [{ label, value, player? }] }`
+- **TournamentDetail:** a `TournamentSummary` plus `{ currentCategory?, currentGame?, nextSelection?, nextNemeses?, standings, categories, games: GameResult[] }`
 - **AwardGrant:** `{ award: slug, player, tournament?, detail? }`
   - `detail` is a human-readable supporting statistic.
 - **GameInfo:** `{ slug, name, categories: slug[], description?, minPlayers?, maxPlayers?, timesPlayed?, timesNominated?, lastPlayed?: { tournament, gameNumber, playedAt? }, available? }`
   - A game may belong to several categories.
 - **PlayerSummary:** `{ slug, name, initials?, avatarUrl?, firstTournament?, tournamentsPlayed?, ultimateGamerWins?, challengerAppearances?, gameWins?, podiumFinishes?, awardCount?, bestPlacement?, current?: { tournament, rank, points }, discord?: { id, username?, displayName? } }`
-  - `avatarUrl` is an `https:` URL, or a path relative to the data URL for pictures hosted with the data (for example `avatars/tnoy.jpg`). Anything else is ignored.
+  - `avatarUrl` is an `https:` URL, or a path relative to the data URL for pictures hosted with the data (for example `avatars/tnoy.jpg` or `avatars/tnoy.discord.png`). Anything else is ignored. The admin picks it in this order: an uploaded picture, a picture link, the Discord picture; without any, the site shows initials.
   - `bestPlacement` is the best final placement (`finish`) in a completed tournament, so the champion counts as 1st.
-  - `discord` is the player's linked Discord account, or `null`. `id` is the numeric user id (15–21 digits); `username` and `displayName` are copied from Discord by the admin tool (`ug-admin discord`) and are `null` until fetched. A Discord picture, when chosen, is stored as the player's hosted avatar, so `avatarUrl` covers it. The site links to `https://discord.com/users/<id>` and never calls Discord itself.
+  - `discord` is the player's linked Discord account. Real players always have one; fictional demo players have `null`. `id` is the numeric user id (15–21 digits); `username` and `displayName` are copied from Discord by the admin tool (`ug-admin discord`) and are `null` until fetched. The site links to `https://discord.com/users/<id>` and never calls Discord itself.
 - **PlayerProfile:** a `PlayerSummary` plus:
   - `tournaments?: [{ tournament, startDate?, status, placement?, finish?, points?, gamesWon?, podiums?, wasChallenger?, wasChampion? }]`
     - `placement` is the points rank. `finish` is the final placement once the tournament is over: the champion is 1st and everyone else follows by points. It is null while the tournament is running.
@@ -97,8 +97,8 @@ The data repository computes everything authoritative:
 
 - Standings and ranks
 - Challenger and champion flags
-- Award recipients, including tie-breaking
-- Statistics and records
+- Award recipients, from fixed rules (everyone tied for an award gets it)
+- Statistics
 
 The website only presents these values. It does sort lists for display, but it does not derive tournament outcomes.
 
