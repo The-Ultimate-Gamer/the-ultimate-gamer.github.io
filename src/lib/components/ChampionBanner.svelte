@@ -14,7 +14,12 @@
 
 <section class="champion" aria-labelledby="champion-heading">
 	<div class="glow" aria-hidden="true"></div>
-	<PlayerAvatar name={champion.player.name} size="xl" highlight="champion" />
+	<PlayerAvatar
+		name={champion.player.name}
+		avatarUrl={champion.player.avatarUrl}
+		size="xl"
+		highlight="champion"
+	/>
 	<div class="text">
 		<p class="eyebrow"><span aria-hidden="true">👑</span> {tournamentName} · Champion</p>
 		<h2 id="champion-heading">
