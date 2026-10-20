@@ -1,7 +1,5 @@
 <script lang="ts">
 	import type { PointsTableEntry, StandingEntry } from '#lib/data/types.ts';
-	import { getAwardContent } from '#lib/content/awards.ts';
-	import { getCategoryContent } from '#lib/content/categories.ts';
 	import { ordinal } from '#lib/format.ts';
 	import PlayerRow from './PlayerRow.svelte';
 
@@ -12,6 +10,8 @@
 		showTokens?: boolean;
 		/** Shown in the legend so everyone knows what each place is worth. */
 		pointsTable?: PointsTableEntry[] | null;
+		/** Called with a player's slug when their name is clicked. */
+		onselect?: (slug: string) => void;
 	}
 
 	let {
@@ -19,23 +19,11 @@
 		threshold,
 		caption = 'Current standings',
 		showTokens = true,
-		pointsTable
+		pointsTable,
+		onselect
 	}: Props = $props();
 
-	// Already conveyed by the status badge.
-	const STATUS_AWARDS = new Set(['challenger', 'ultimate-gamer']);
-
 	const rows = $derived([...standings].sort((a, b) => a.rank - b.rank));
-
-	/** Icons that appear in the table, so touch users (no hover) can read what they mean. */
-	const legend = $derived.by(() => {
-		const awards = new Set(standings.flatMap((s) => s.awards ?? []));
-		const categories = new Set(standings.flatMap((s) => s.categoryWins ?? []));
-		return [
-			...[...awards].filter((a) => !STATUS_AWARDS.has(a)).map((a) => getAwardContent(a)),
-			...[...categories].map((c) => getCategoryContent(c))
-		];
-	});
 	const points = $derived([...(pointsTable ?? [])].sort((a, b) => a.placement - b.placement));
 </script>
 
@@ -53,41 +41,35 @@
 		</thead>
 		<tbody>
 			{#each rows as entry (entry.player.slug)}
-				<PlayerRow {entry} {threshold} {showTokens} />
+				<PlayerRow {entry} {threshold} {showTokens} {onselect} />
 			{/each}
 		</tbody>
 	</table>
 </div>
 
-<div class="legend">
-	{#if points.length}
-		<p>
-			<span class="key">Points per place</span>
-			{#each points as p (p.placement)}
-				<span class="item"
-					><span class="subtle">{ordinal(p.placement)}</span>
-					<span class="num">{p.points}</span></span
-				>
-			{/each}
-			<span class="subtle">· +1 for beating your Nemesis · ×2 with Double Down</span>
-		</p>
-	{/if}
-	{#if showTokens}
-		<p>
-			<span class="key">Tokens left</span>
-			<span class="item"><span class="num">D</span> Double Down</span>
-			<span class="item"><span class="num">N</span> Nominate</span>
-		</p>
-	{/if}
-	{#if legend.length}
-		<p>
-			<span class="key">Icons</span>
-			{#each legend as item (item.slug)}
-				<span class="item"><span aria-hidden="true">{item.icon}</span> {item.name}</span>
-			{/each}
-		</p>
-	{/if}
-</div>
+{#if points.length || threshold != null}
+	<div class="legend">
+		{#if points.length}
+			<p>
+				<span class="key">Points per place</span>
+				{#each points as p (p.placement)}
+					<span class="item"
+						><span class="subtle">{ordinal(p.placement)}</span>
+						<span class="num">{p.points}</span></span
+					>
+				{/each}
+				<span class="subtle">· +1 for beating your Nemesis · ×2 with Double Down</span>
+			</p>
+		{/if}
+		{#if threshold != null}
+			<p>
+				<span class="key">Challenger at</span>
+				<span class="item"><strong class="num threshold">{threshold}</strong> pts</span>
+				<span class="subtle">· then win one more game to become the Ultimate Gamer</span>
+			</p>
+		{/if}
+	</div>
+{/if}
 
 <style>
 	.leaderboard {
@@ -150,6 +132,11 @@
 
 	.item {
 		white-space: nowrap;
+	}
+
+	.threshold {
+		color: var(--c-challenger);
+		font-size: var(--fs-sm);
 	}
 
 	@media (max-width: 760px) {

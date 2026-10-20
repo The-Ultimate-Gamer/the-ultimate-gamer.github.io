@@ -7,14 +7,23 @@
 	import NotFoundState from '#lib/components/NotFoundState.svelte';
 	import PlayerAvatar from '#lib/components/PlayerAvatar.svelte';
 	import CategoryBadge from '#lib/components/CategoryBadge.svelte';
-	import AwardBadge from '#lib/components/AwardBadge.svelte';
 	import StatusBadge from '#lib/components/StatusBadge.svelte';
+	import StatusPill from '#lib/components/StatusPill.svelte';
 	import LastUpdated from '#lib/components/LastUpdated.svelte';
 	import SidePanel from '#lib/components/SidePanel.svelte';
 	import ShareButton from '#lib/components/ShareButton.svelte';
 	import Tabs from '#lib/components/Tabs.svelte';
-	import { formatDate, ordinal } from '#lib/format.ts';
-	import type { PlayerProfile } from '#lib/data/types.ts';
+	import EmptyState from '#lib/components/EmptyState.svelte';
+	import ViewSwitch, { type ViewMode } from '#lib/components/ViewSwitch.svelte';
+	import FilterSelect from '#lib/components/FilterSelect.svelte';
+	import PlayerAwardsDetail from '#lib/components/PlayerAwardsDetail.svelte';
+	import PlayerCategoriesDetail from '#lib/components/PlayerCategoriesDetail.svelte';
+	import PlayerNemesesDetail from '#lib/components/PlayerNemesesDetail.svelte';
+	import PlayerMatches from '#lib/components/PlayerMatches.svelte';
+	import DiscordLink from '#lib/components/DiscordLink.svelte';
+	import { getAwardContent } from '#lib/content/awards.ts';
+	import { formatDate, ordinal, plural } from '#lib/format.ts';
+	import type { PlayerProfile, PlayerTournamentEntry, TournamentStatus } from '#lib/data/types.ts';
 	import type { PageProps } from './$types';
 
 	let { params }: PageProps = $props();
@@ -23,31 +32,79 @@
 	const player = $derived(resource.data?.player);
 	const notFound = $derived(resource.error?.kind === 'not-found' && !resource.data);
 
-	let infoTab = $state('awards');
-	/** Tournament whose match history is shown in the side panel. */
-	let openTournament = $state<string | null>(null);
+	type Topic = 'games' | 'awards' | 'categories' | 'nemeses';
+	/** Side panel: a career topic, or one tournament (opened on a topic tab). */
+	let panel = $state<{ topic: Topic; tournament?: string } | null>(null);
+	let panelTab = $state<string>('games');
 
-	/** Group award grants per award for display: "Challenger ×2". */
-	function awardCounts(p: PlayerProfile) {
-		const groups = new Map<string, { award: string; count: number; details: string[] }>();
-		for (const a of p.awards ?? []) {
-			const group = groups.get(a.award) ?? { award: a.award, count: 0, details: [] };
-			group.count++;
-			if (a.detail) group.details.push(a.detail);
-			groups.set(a.award, group);
-		}
-		return [...groups.values()];
+	function openCareer(topic: Exclude<Topic, 'games'>) {
+		panel = { topic };
 	}
 
-	function awardsIn(p: PlayerProfile, slug: string) {
-		return (p.awards ?? []).filter((a) => a.tournament?.slug === slug);
+	function openTournament(slug: string, topic: Topic = 'games') {
+		panel = { topic, tournament: slug };
+		panelTab = topic;
+	}
+
+	// Tournament list filters.
+	type StatusFilter = 'all' | TournamentStatus;
+	type Sort = 'newest' | 'oldest' | 'finish' | 'points';
+	let status = $state<StatusFilter>('all');
+	let sort = $state<Sort>('newest');
+	let view = $state<ViewMode>('cards');
+
+	const sortOptions: { value: Sort; label: string }[] = [
+		{ value: 'newest', label: 'Newest first' },
+		{ value: 'oldest', label: 'Oldest first' },
+		{ value: 'finish', label: 'Best finish' },
+		{ value: 'points', label: 'Most points' }
+	];
+
+	const finishOf = (t: PlayerTournamentEntry) => t.finish ?? t.placement ?? null;
+	const newest = (a: PlayerTournamentEntry, b: PlayerTournamentEntry) =>
+		(b.startDate ?? '').localeCompare(a.startDate ?? '');
+	const sorters: Record<Sort, (a: PlayerTournamentEntry, b: PlayerTournamentEntry) => number> = {
+		newest,
+		oldest: (a, b) => -newest(a, b),
+		finish: (a, b) => (finishOf(a) ?? Infinity) - (finishOf(b) ?? Infinity) || newest(a, b),
+		points: (a, b) => (b.points ?? 0) - (a.points ?? 0) || newest(a, b)
+	};
+
+	function visible(list: PlayerTournamentEntry[]) {
+		return list.filter((t) => status === 'all' || t.status === status).sort(sorters[sort]);
+	}
+
+	/** Award grants grouped per award: "Challenger ×2". */
+	function awardGroups(p: PlayerProfile, tournament?: string) {
+		const groups = new Map<string, number>();
+		for (const a of p.awards ?? []) {
+			if (tournament && a.tournament?.slug !== tournament) continue;
+			groups.set(a.award, (groups.get(a.award) ?? 0) + 1);
+		}
+		return [...groups].map(([slug, count]) => ({ ...getAwardContent(slug), count }));
+	}
+
+	/** Per-tournament summaries, taken from the published match list. */
+	function tournamentSummary(p: PlayerProfile, slug: string) {
+		const matches = (p.matches ?? []).filter((m) => m.tournament.slug === slug);
+		const nemesisGames = matches.filter((m) => m.nemesis);
+		return {
+			awards: awardGroups(p, slug),
+			categories: matches.filter((m) => m.placement === 1).map((m) => m.category),
+			nemesisBeaten: nemesisGames.filter((m) => m.defeatedNemesis).length,
+			nemesisGames: nemesisGames.length
+		};
+	}
+
+	function percent(part: number, whole: number) {
+		return whole > 0 ? `${Math.round((part / whole) * 100)}%` : '–';
 	}
 </script>
 
 <PageMeta
 	title={player ? player.name : notFound ? 'Player not found' : params.slug}
 	description={player
-		? `${player.name} on The Ultimate Gamer: titles, tournament history, awards and Nemesis rivalries.`
+		? `${player.name} on The Ultimate Gamer: titles, tournaments, awards and Nemesis rivalries.`
 		: undefined}
 />
 
@@ -70,9 +127,14 @@
 
 		{#snippet children({ player: p })}
 			{@const titles = p.ultimateGamerWins ?? 0}
-			{@const grouped = awardCounts(p)}
-			{@const shownTournament = p.tournaments?.find((t) => t.tournament.slug === openTournament)}
-			{@const shownMatches = (p.matches ?? []).filter((m) => m.tournament.slug === openTournament)}
+			{@const awards = awardGroups(p)}
+			{@const categoryTotal = (p.categoryWins ?? []).reduce((n, c) => n + c.wins, 0)}
+			{@const tournaments = p.tournaments ?? []}
+			{@const shown = visible(tournaments)}
+			{@const statuses = [...new Set(tournaments.map((t) => t.status))]}
+			{@const panelTournament = panel?.tournament
+				? tournaments.find((t) => t.tournament.slug === panel!.tournament)
+				: null}
 			<header class="profile-head">
 				<PlayerAvatar
 					name={p.name}
@@ -84,11 +146,13 @@
 				<div class="id">
 					<p class="eyebrow">Player profile</p>
 					<h1>{p.name}</h1>
+					{#if p.discord}<div><DiscordLink account={p.discord} /></div>{/if}
 					<div class="tags">
 						{#if titles > 0}<StatusBadge status="champion" />
 							{#if titles > 1}<span class="num times">×{titles}</span>{/if}{/if}
 						{#if p.current}
 							<span class="current">
+								<span class="dot" aria-hidden="true"></span>
 								Live: <strong class="num">{ordinal(p.current.rank)}</strong> in points (<strong
 									class="num">{p.current.points}</strong
 								>
@@ -99,6 +163,18 @@
 							</span>
 						{/if}
 					</div>
+					<p class="facts subtle">
+						{#if p.tournamentsPlayed != null}<span>{plural(p.tournamentsPlayed, 'tournament')}</span
+							>{/if}
+						{#if p.bestPlacement}<span
+								>Best finish <strong class="num">{ordinal(p.bestPlacement)}</strong></span
+							>{/if}
+						{#if p.challengerAppearances}<span
+								><strong class="num">{p.challengerAppearances}×</strong> Challenger</span
+							>{/if}
+						{#if p.gameWins != null}<span>{plural(p.gameWins, 'game win')}</span>{/if}
+						{#if p.firstTournament}<span>Since {p.firstTournament.name}</span>{/if}
+					</p>
 				</div>
 				<div class="head-actions">
 					<ShareButton kind="player" slug={p.slug} title="{p.name} · The Ultimate Gamer" />
@@ -110,289 +186,361 @@
 				</div>
 			</header>
 
-			<dl class="stat-grid">
-				<div class="stat gold">
-					<dt class="stat-label">Ultimate Gamer</dt>
-					<dd class="stat-value">{titles}</dd>
-				</div>
-				<div class="stat">
-					<dt class="stat-label">Challenger</dt>
-					<dd class="stat-value">{p.challengerAppearances ?? '–'}</dd>
-				</div>
-				<div class="stat">
-					<dt class="stat-label">Tournaments</dt>
-					<dd class="stat-value">{p.tournamentsPlayed ?? '–'}</dd>
-				</div>
-				<div class="stat">
-					<dt class="stat-label" title="Best final placement. The champion counts as 1st.">
-						Best finish
-					</dt>
-					<dd class="stat-value">{p.bestPlacement ? ordinal(p.bestPlacement) : '–'}</dd>
-				</div>
-			</dl>
-
-			<div class="cols">
-				<section class="panel" aria-labelledby="hist-title">
-					<div class="panel-header">
-						<h2 class="panel-title" id="hist-title">Tournament history</h2>
-					</div>
-					{#if p.tournaments?.length}
-						{@const maxPts = Math.max(1, ...p.tournaments.map((t) => t.points ?? 0))}
-						<div class="table-scroll">
-							<table class="data-table history">
-								<caption class="visually-hidden"
-									>Tournaments played by {p.name}. Open a row for its games.</caption
+			<section class="shelf" aria-label="Trophy cabinet">
+				<button class="tile" type="button" onclick={() => openCareer('awards')}>
+					<span class="tile-head">
+						<span class="eyebrow">Awards</span>
+						<span class="chev" aria-hidden="true">›</span>
+					</span>
+					<span class="big num">{p.awards?.length ?? p.awardCount ?? 0}</span>
+					{#if awards.length}
+						<span class="icons" aria-hidden="true">
+							{#each awards.slice(0, 8) as a (a.slug)}
+								<span class="trophy" title={a.name}
+									>{a.icon}{#if a.count > 1}<span class="num mult">×{a.count}</span>{/if}</span
 								>
-								<thead>
-									<tr>
-										<th scope="col">Tournament</th>
-										<th scope="col" title="Final placement; the champion counts as 1st">Place</th>
-										<th scope="col">Points</th>
-										<th scope="col">Wins</th>
-										<th scope="col">Podiums</th>
-										<th scope="col">Awards</th>
-										<th scope="col"><span class="visually-hidden">Games</span></th>
-									</tr>
-								</thead>
-								<tbody>
-									{#each p.tournaments as t (t.tournament.slug)}
-										{@const awards = awardsIn(p, t.tournament.slug)}
-										<tr class="clickable" onclick={() => (openTournament = t.tournament.slug)}>
-											<th scope="row">
-												<a
-													href={resolve('/tournaments/[slug]', { slug: t.tournament.slug })}
-													onclick={(e) => e.stopPropagation()}>{t.tournament.name}</a
-												>
-												{#if t.startDate}<span class="subtle date">{formatDate(t.startDate)}</span
-													>{/if}
-											</th>
-											<td class="num place">
-												{#if t.status === 'ongoing'}
-													{t.placement ? ordinal(t.placement) : '–'}
-													<span class="subtle live">live</span>
-												{:else}
-													{(t.finish ?? t.placement) ? ordinal((t.finish ?? t.placement)!) : '–'}
-												{/if}
-											</td>
-											<td>
-												<span class="pts-cell">
-													<span class="num">{t.points ?? '–'}</span>
-													{#if t.points != null}
-														<span class="spark" aria-hidden="true">
-															<span style:width="{(t.points / maxPts) * 100}%"></span>
-														</span>
-													{/if}
-												</span>
-											</td>
-											<td class="num">{t.gamesWon ?? '–'}</td>
-											<td class="num">{t.podiums ?? '–'}</td>
-											<td>
-												<span class="award-cell">
-													{#each awards as a, i (`${a.award}-${i}`)}
-														<AwardBadge slug={a.award} detail={a.detail} />
-													{:else}
-														<span class="subtle">–</span>
-													{/each}
-												</span>
-											</td>
-											<td class="open-cell">
-												<button
-													class="open"
-													type="button"
-													onclick={(e) => {
-														e.stopPropagation();
-														openTournament = t.tournament.slug;
-													}}
-												>
-													Games <span aria-hidden="true">›</span>
-													<span class="visually-hidden">in {t.tournament.name}</span>
-												</button>
-											</td>
-										</tr>
-									{/each}
-								</tbody>
-							</table>
-						</div>
+							{/each}
+						</span>
+						<span class="visually-hidden"
+							>{awards.map((a) => `${a.name}${a.count > 1 ? ` ×${a.count}` : ''}`).join(', ')}</span
+						>
 					{:else}
-						<div class="panel-body"><p class="subtle">No tournament history recorded.</p></div>
+						<span class="subtle small">No awards yet</span>
 					{/if}
-				</section>
+				</button>
 
-				<div class="side">
-					<section class="panel" aria-label="Awards, category wins and Nemeses">
+				<button class="tile" type="button" onclick={() => openCareer('categories')}>
+					<span class="tile-head">
+						<span class="eyebrow">Category wins</span>
+						<span class="chev" aria-hidden="true">›</span>
+					</span>
+					<span class="big num">{categoryTotal}</span>
+					{#if p.categoryWins?.length}
+						<span class="icons">
+							{#each p.categoryWins.slice(0, 8) as c (c.category)}
+								<span class="cat"
+									><CategoryBadge slug={c.category} iconOnly size="sm" />{#if c.wins > 1}<span
+											class="num mult">×{c.wins}</span
+										>{/if}</span
+								>
+							{/each}
+						</span>
+					{:else}
+						<span class="subtle small">No games won yet</span>
+					{/if}
+				</button>
+
+				<button class="tile" type="button" onclick={() => openCareer('nemeses')}>
+					<span class="tile-head">
+						<span class="eyebrow">Nemeses</span>
+						<span class="chev" aria-hidden="true">›</span>
+					</span>
+					{#if p.nemesis}
+						<span class="big num"
+							><span class="w">{p.nemesis.defeated}</span><span class="sep">–</span><span class="l"
+								>{p.nemesis.defeatedBy}</span
+							></span
+						>
+						<span class="subtle small">
+							{#if p.nemesis.timesAssigned}
+								Beat their Nemesis in <strong class="num"
+									>{percent(p.nemesis.defeated, p.nemesis.timesAssigned)}</strong
+								>
+								of games
+							{:else}
+								Nemeses beaten – times beaten as a Nemesis
+							{/if}
+						</span>
+					{:else}
+						<span class="big num">–</span>
+						<span class="subtle small">No Nemesis games yet</span>
+					{/if}
+				</button>
+			</section>
+
+			<section class="panel" aria-labelledby="tour-title">
+				<div class="panel-header tour-head">
+					<h2 class="panel-title" id="tour-title">Tournaments</h2>
+					{#if tournaments.length}
+						<div class="controls">
+							{#if statuses.length > 1}
+								<FilterSelect
+									inline
+									label="Show"
+									bind:value={status}
+									options={[
+										{ value: 'all', label: 'All' },
+										...(['ongoing', 'upcoming', 'completed'] as const)
+											.filter((s) => statuses.includes(s))
+											.map((s) => ({
+												value: s,
+												label: { ongoing: 'Live', upcoming: 'Upcoming', completed: 'Completed' }[s]
+											}))
+									]}
+								/>
+							{/if}
+							<FilterSelect inline label="Sort" bind:value={sort} options={sortOptions} />
+							<ViewSwitch bind:value={view} />
+						</div>
+					{/if}
+				</div>
+
+				{#if !tournaments.length}
+					<div class="panel-body"><p class="subtle">No tournaments recorded.</p></div>
+				{:else if !shown.length}
+					<div class="panel-body">
+						<EmptyState title="No matching tournaments" message="Try another filter." />
+					</div>
+				{:else if view === 'cards'}
+					<ul class="panel-body t-cards">
+						{#each shown as t (t.tournament.slug)}
+							{@const sum = tournamentSummary(p, t.tournament.slug)}
+							{@const finish = finishOf(t)}
+							<li class="t-card" class:won={t.wasChampion}>
+								<div class="t-top">
+									<div class="t-id">
+										<h3>
+											<a href={resolve('/tournaments/[slug]', { slug: t.tournament.slug })}
+												>{t.tournament.name}</a
+											>
+										</h3>
+										<span class="t-meta">
+											<StatusPill status={t.status} />
+											{#if t.startDate}<span class="subtle">{formatDate(t.startDate)}</span>{/if}
+										</span>
+									</div>
+									<div class="place" class:gold={finish === 1 && t.status === 'completed'}>
+										<span class="num">{finish ? ordinal(finish) : '–'}</span>
+										<span class="subtle">{t.status === 'ongoing' ? 'live' : 'place'}</span>
+									</div>
+								</div>
+								<div class="t-badges">
+									{#if t.wasChampion}<StatusBadge status="champion" size="sm" />
+									{:else if t.wasChallenger}<StatusBadge status="challenger" size="sm" />{/if}
+								</div>
+								<dl class="t-stats">
+									<div>
+										<dt>Points</dt>
+										<dd class="num">{t.points ?? '–'}</dd>
+									</div>
+									<div>
+										<dt>Wins</dt>
+										<dd class="num">{t.gamesWon ?? '–'}</dd>
+									</div>
+									<div>
+										<dt>Podiums</dt>
+										<dd class="num">{t.podiums ?? '–'}</dd>
+									</div>
+								</dl>
+								<div class="chips">
+									<button
+										class="chip"
+										type="button"
+										onclick={() => openTournament(t.tournament.slug, 'awards')}
+									>
+										<span class="chip-label">Awards</span>
+										<span class="chip-value">
+											{#each sum.awards.slice(0, 4) as a (a.slug)}<span aria-hidden="true"
+													>{a.icon}</span
+												>{/each}
+											<span class="num">{sum.awards.reduce((n, a) => n + a.count, 0)}</span>
+										</span>
+									</button>
+									<button
+										class="chip"
+										type="button"
+										onclick={() => openTournament(t.tournament.slug, 'categories')}
+									>
+										<span class="chip-label">Categories</span>
+										<span class="chip-value">
+											{#each sum.categories.slice(0, 3) as c, i (`${c}-${i}`)}<CategoryBadge
+													slug={c}
+													iconOnly
+													size="sm"
+												/>{/each}
+											<span class="num">{sum.categories.length}</span>
+										</span>
+									</button>
+									<button
+										class="chip"
+										type="button"
+										onclick={() => openTournament(t.tournament.slug, 'nemeses')}
+									>
+										<span class="chip-label">Nemesis</span>
+										<span class="chip-value num"
+											>{sum.nemesisGames ? `${sum.nemesisBeaten}/${sum.nemesisGames}` : '–'}</span
+										>
+									</button>
+								</div>
+								<button
+									class="open"
+									type="button"
+									onclick={() => openTournament(t.tournament.slug, 'games')}
+								>
+									Games <span aria-hidden="true">›</span>
+									<span class="visually-hidden">in {t.tournament.name}</span>
+								</button>
+							</li>
+						{/each}
+					</ul>
+				{:else}
+					{@const maxPts = Math.max(1, ...tournaments.map((t) => t.points ?? 0))}
+					<div class="table-scroll">
+						<table class="data-table history">
+							<caption class="visually-hidden"
+								>Tournaments played by {p.name}. Open a summary for details.</caption
+							>
+							<thead>
+								<tr>
+									<th scope="col">Tournament</th>
+									<th scope="col" title="Final placement; the champion counts as 1st">Place</th>
+									<th scope="col">Points</th>
+									<th scope="col">Wins</th>
+									<th scope="col">Podiums</th>
+									<th scope="col">Awards</th>
+									<th scope="col">Categories</th>
+									<th scope="col" title="Nemeses beaten / games with a Nemesis">Nemesis</th>
+									<th scope="col"><span class="visually-hidden">Games</span></th>
+								</tr>
+							</thead>
+							<tbody>
+								{#each shown as t (t.tournament.slug)}
+									{@const sum = tournamentSummary(p, t.tournament.slug)}
+									{@const finish = finishOf(t)}
+									<tr>
+										<th scope="row">
+											<a href={resolve('/tournaments/[slug]', { slug: t.tournament.slug })}
+												>{t.tournament.name}</a
+											>
+											{#if t.startDate}<span class="subtle date">{formatDate(t.startDate)}</span
+												>{/if}
+										</th>
+										<td class="num place">
+											{finish ? ordinal(finish) : '–'}
+											{#if t.status === 'ongoing'}<span class="subtle live">live</span>{/if}
+										</td>
+										<td>
+											<span class="pts-cell">
+												<span class="num">{t.points ?? '–'}</span>
+												{#if t.points != null}
+													<span class="spark" aria-hidden="true">
+														<span style:width="{(t.points / maxPts) * 100}%"></span>
+													</span>
+												{/if}
+											</span>
+										</td>
+										<td class="num">{t.gamesWon ?? '–'}</td>
+										<td class="num">{t.podiums ?? '–'}</td>
+										<td>
+											<button
+												class="cell-btn"
+												type="button"
+												onclick={() => openTournament(t.tournament.slug, 'awards')}
+											>
+												{#each sum.awards.slice(0, 4) as a (a.slug)}<span
+														aria-hidden="true"
+														title={a.name}>{a.icon}</span
+													>{/each}
+												<span class="num">{sum.awards.reduce((n, a) => n + a.count, 0)}</span>
+												<span class="visually-hidden">awards in {t.tournament.name}</span>
+											</button>
+										</td>
+										<td>
+											<button
+												class="cell-btn"
+												type="button"
+												onclick={() => openTournament(t.tournament.slug, 'categories')}
+											>
+												{#each sum.categories.slice(0, 4) as c, i (`${c}-${i}`)}<CategoryBadge
+														slug={c}
+														iconOnly
+														size="sm"
+													/>{/each}
+												<span class="num">{sum.categories.length}</span>
+												<span class="visually-hidden">category wins in {t.tournament.name}</span>
+											</button>
+										</td>
+										<td>
+											<button
+												class="cell-btn"
+												type="button"
+												onclick={() => openTournament(t.tournament.slug, 'nemeses')}
+											>
+												<span class="num"
+													>{sum.nemesisGames
+														? `${sum.nemesisBeaten}/${sum.nemesisGames}`
+														: '–'}</span
+												>
+												<span class="visually-hidden">Nemesis games in {t.tournament.name}</span>
+											</button>
+										</td>
+										<td class="open-cell">
+											<button
+												class="open"
+												type="button"
+												onclick={() => openTournament(t.tournament.slug, 'games')}
+											>
+												Games <span aria-hidden="true">›</span>
+												<span class="visually-hidden">in {t.tournament.name}</span>
+											</button>
+										</td>
+									</tr>
+								{/each}
+							</tbody>
+						</table>
+					</div>
+				{/if}
+			</section>
+
+			<SidePanel
+				open={!!panel}
+				eyebrow={panelTournament ? `${p.name} · tournament` : `${p.name} · career`}
+				title={panelTournament
+					? panelTournament.tournament.name
+					: panel?.topic === 'awards'
+						? 'Awards'
+						: panel?.topic === 'categories'
+							? 'Category wins'
+							: 'Nemeses'}
+				onclose={() => (panel = null)}
+			>
+				{#if panel && panelTournament}
+					{@const slug = panelTournament.tournament.slug}
+					<div class="panel-tabs">
 						<Tabs
-							label="Awards, category wins and Nemeses"
-							bind:selected={infoTab}
+							label="Tournament details"
+							bind:selected={panelTab}
 							tabs={[
-								{ id: 'awards', label: 'Awards', count: p.awards?.length ?? 0 },
-								{ id: 'categories', label: 'Categories', count: p.categoryWins?.length ?? 0 },
+								{ id: 'games', label: 'Games' },
+								{ id: 'awards', label: 'Awards' },
+								{ id: 'categories', label: 'Categories' },
 								{ id: 'nemeses', label: 'Nemeses' }
 							]}
 						>
 							{#snippet children(tab)}
-								<div class="panel-body">
-									{#if tab === 'awards'}
-										{#if grouped.length}
-											<ul class="counts">
-												{#each grouped as g (g.award)}
-													<li>
-														<AwardBadge slug={g.award} detail={g.details.join(' · ') || null} />
-														<span class="num">×{g.count}</span>
-													</li>
-												{/each}
-											</ul>
-										{:else}
-											<p class="subtle">No awards yet.</p>
-										{/if}
+								<div class="tab-body">
+									{#if tab === 'games'}
+										<PlayerMatches player={p} tournament={panelTournament.tournament} />
+									{:else if tab === 'awards'}
+										<PlayerAwardsDetail player={p} tournament={slug} />
 									{:else if tab === 'categories'}
-										{#if p.categoryWins?.length}
-											<ul class="counts">
-												{#each p.categoryWins as c (c.category)}
-													<li>
-														<CategoryBadge slug={c.category} /><span class="num">×{c.wins}</span>
-													</li>
-												{/each}
-											</ul>
-										{:else}
-											<p class="subtle">No category wins yet.</p>
-										{/if}
-									{:else if p.nemesis || p.rivals?.length}
-										<div class="nemesis">
-											{#if p.nemesis}
-												<p class="summary">
-													Beat their Nemesis
-													<strong class="num">{p.nemesis.defeated}</strong>
-													{#if p.nemesis.timesAssigned}of
-														<strong class="num">{p.nemesis.timesAssigned}</strong>{/if}
-													times. Beaten <strong class="num">{p.nemesis.defeatedBy}</strong>
-													{p.nemesis.defeatedBy === 1 ? 'time' : 'times'} as someone else’s Nemesis.
-												</p>
-											{/if}
-											{#if p.rivals?.length}
-												<table class="data-table">
-													<caption class="visually-hidden">Nemesis rivalries</caption>
-													<thead>
-														<tr>
-															<th scope="col">Rival</th>
-															<th scope="col" title="Times {p.name} beat them as their Nemesis"
-																>Beat</th
-															>
-															<th scope="col" title="Times they beat {p.name} as their Nemesis"
-																>Beaten by</th
-															>
-														</tr>
-													</thead>
-													<tbody>
-														{#each p.rivals as r (r.player.slug)}
-															<tr>
-																<th scope="row">
-																	<a href={resolve('/players/[slug]', { slug: r.player.slug })}
-																		>{r.player.name}</a
-																	>
-																</th>
-																<td class="num">{r.nemesisWins}</td>
-																<td class="num">{r.nemesisLosses}</td>
-															</tr>
-														{/each}
-													</tbody>
-												</table>
-											{/if}
-										</div>
+										<PlayerCategoriesDetail player={p} tournament={slug} />
 									{:else}
-										<p class="subtle">No Nemesis games yet.</p>
+										<PlayerNemesesDetail player={p} tournament={slug} />
 									{/if}
 								</div>
 							{/snippet}
 						</Tabs>
-					</section>
-
-					{#if p.doubleDown || p.nominate}
-						<section class="panel" aria-labelledby="tok-title">
-							<div class="panel-header">
-								<h2 class="panel-title" id="tok-title">Tokens</h2>
-							</div>
-							<dl class="panel-body kv">
-								{#if p.doubleDown}
-									<div>
-										<dt>Double Downs used</dt>
-										<dd class="num">{p.doubleDown.used}</dd>
-									</div>
-									<div>
-										<dt>Double Down wins</dt>
-										<dd class="num">{p.doubleDown.wins}</dd>
-									</div>
-								{/if}
-								{#if p.nominate}
-									<div>
-										<dt>Nominations used</dt>
-										<dd class="num">{p.nominate.used}</dd>
-									</div>
-									<div>
-										<dt>Nominations selected</dt>
-										<dd class="num">{p.nominate.selected}</dd>
-									</div>
-								{/if}
-							</dl>
-						</section>
-					{/if}
-				</div>
-			</div>
-
-			<SidePanel
-				open={!!shownTournament}
-				eyebrow="{p.name} · match history"
-				title={shownTournament?.tournament.name ?? ''}
-				onclose={() => (openTournament = null)}
-			>
-				{#if shownTournament}
-					{#if shownMatches.length}
-						<div class="table-scroll">
-							<table class="data-table matches">
-								<caption class="visually-hidden"
-									>{p.name}’s games in {shownTournament.tournament.name}</caption
-								>
-								<thead>
-									<tr>
-										<th scope="col">Game</th>
-										<th scope="col">Place</th>
-										<th scope="col">Points</th>
-									</tr>
-								</thead>
-								<tbody>
-									{#each shownMatches as m (`${m.tournament.slug}-${m.gameNumber}`)}
-										<tr class:won={m.placement === 1}>
-											<th scope="row">
-												<a
-													href="{resolve('/tournaments/[slug]', {
-														slug: m.tournament.slug
-													})}#game-{m.gameNumber}">{m.game.name}</a
-												>
-												<span class="game-meta">
-													<span class="subtle num">#{m.gameNumber}</span>
-													<CategoryBadge slug={m.category} size="sm" iconOnly />
-													{#if m.doubleDown}<span class="note dd">Double Down</span>{/if}
-													{#if m.defeatedNemesis && m.nemesis}
-														<span class="note nem">Beat Nemesis {m.nemesis.name}</span>
-													{:else if m.nemesis}
-														<span class="subtle">Nemesis: {m.nemesis.name}</span>
-													{/if}
-												</span>
-											</th>
-											<td class="num place">{ordinal(m.placement)}</td>
-											<td class="num">+{m.points}</td>
-										</tr>
-									{/each}
-								</tbody>
-							</table>
-						</div>
-					{:else}
-						<p class="subtle">No games recorded in this tournament yet.</p>
-					{/if}
-					<a
-						class="btn"
-						href={resolve('/tournaments/[slug]', { slug: shownTournament.tournament.slug })}
-						>Open {shownTournament.tournament.name}</a
+					</div>
+					<a class="btn" href={resolve('/tournaments/[slug]', { slug })}
+						>Open {panelTournament.tournament.name} <span aria-hidden="true">→</span></a
 					>
+				{:else if panel?.topic === 'awards'}
+					<PlayerAwardsDetail player={p} />
+				{:else if panel?.topic === 'categories'}
+					<PlayerCategoriesDetail player={p} />
+				{:else if panel}
+					<PlayerNemesesDetail player={p} />
 				{/if}
 			</SidePanel>
 		{/snippet}
@@ -450,7 +598,31 @@
 	}
 
 	.current {
+		display: inline-flex;
+		flex-wrap: wrap;
+		align-items: baseline;
+		gap: 0.3em;
 		color: var(--c-text-muted);
+	}
+
+	.dot {
+		align-self: center;
+		width: 0.45rem;
+		height: 0.45rem;
+		border-radius: 50%;
+		background: var(--c-live);
+		box-shadow: 0 0 8px var(--c-live);
+	}
+
+	.facts {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--sp-1) var(--sp-4);
+		font-size: var(--fs-sm);
+	}
+
+	.facts strong {
+		color: var(--c-text);
 	}
 
 	.head-actions {
@@ -460,29 +632,241 @@
 		gap: var(--sp-3);
 	}
 
-	.stat.gold .stat-value {
+	/* Trophy cabinet */
+	.shelf {
+		display: grid;
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+		gap: var(--sp-4);
+	}
+
+	.tile {
+		display: grid;
+		align-content: start;
+		gap: var(--sp-2);
+		padding: var(--sp-4) var(--sp-5);
+		background: linear-gradient(160deg, rgb(255 198 26 / 0.06), transparent 55%), var(--c-surface);
+		border: var(--border);
+		border-radius: var(--radius-lg);
+		text-align: left;
+		cursor: pointer;
+		transition:
+			border-color var(--t-base),
+			transform var(--t-base) var(--ease-out);
+	}
+
+	.tile:hover {
+		border-color: var(--c-gold-line);
+		transform: translateY(-2px);
+	}
+
+	.tile-head {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+	}
+
+	.chev {
+		color: var(--c-gold);
+		font-size: var(--fs-lg);
+	}
+
+	.big {
+		font-size: var(--fs-3xl);
+		font-weight: 700;
+		line-height: 1;
 		color: var(--c-gold-bright);
 	}
 
-	dl {
+	.big .w {
+		color: var(--c-live);
+	}
+
+	.big .l {
+		color: var(--c-challenger);
+	}
+
+	.big .sep {
+		color: var(--c-text-subtle);
+		margin-inline: 0.1em;
+	}
+
+	.icons {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: var(--sp-2);
+	}
+
+	.trophy {
+		display: inline-flex;
+		align-items: baseline;
+		gap: 0.1rem;
+		font-size: 1.35rem;
+	}
+
+	.cat {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.15rem;
+	}
+
+	.mult {
+		font-size: var(--fs-xs);
+		color: var(--c-text-muted);
+	}
+
+	.small {
+		font-size: var(--fs-xs);
+	}
+
+	/* Tournaments */
+	.tour-head {
+		flex-wrap: wrap;
+		gap: var(--sp-3);
+	}
+
+	.controls {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: var(--sp-3);
+	}
+
+	.t-cards {
+		list-style: none;
 		margin: 0;
+		display: grid;
+		gap: var(--sp-4);
+		grid-template-columns: repeat(auto-fill, minmax(min(100%, 19rem), 1fr));
+	}
+
+	.t-card {
+		display: grid;
+		align-content: start;
+		gap: var(--sp-3);
+		padding: var(--sp-4);
+		background: var(--c-bg-raised);
+		border: var(--border);
+		border-radius: var(--radius-lg);
+	}
+
+	.t-card.won {
+		border-color: var(--c-gold-line);
+		background:
+			linear-gradient(160deg, rgb(255 198 26 / 0.08), transparent 55%), var(--c-bg-raised);
+	}
+
+	.t-top {
+		display: flex;
+		justify-content: space-between;
+		align-items: flex-start;
+		gap: var(--sp-3);
+	}
+
+	.t-id {
+		display: grid;
+		gap: var(--sp-1);
+		min-width: 0;
+	}
+
+	h3 {
+		font-size: var(--fs-lg);
+		text-transform: uppercase;
+	}
+
+	h3 a {
+		text-decoration: none;
+	}
+
+	.t-meta {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: var(--sp-2);
+		font-size: var(--fs-xs);
+	}
+
+	.place {
+		display: grid;
+		justify-items: end;
+		line-height: 1.1;
+	}
+
+	.place .num {
+		font-size: var(--fs-2xl);
+		font-weight: 700;
+	}
+
+	.place .subtle {
+		font-size: 0.65rem;
+		text-transform: uppercase;
+		letter-spacing: var(--tracking-wide);
+	}
+
+	.place.gold .num {
+		color: var(--c-gold-bright);
+	}
+
+	.t-badges:empty {
+		display: none;
+	}
+
+	.t-stats {
+		margin: 0;
+		display: grid;
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+		gap: var(--sp-2);
+	}
+
+	.t-stats div {
+		display: grid;
+	}
+
+	dt {
+		font-size: 0.62rem;
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
+		color: var(--c-text-subtle);
 	}
 
 	dd {
 		margin: 0;
+		font-weight: 700;
 	}
 
-	.cols {
+	.chips {
 		display: grid;
-		gap: var(--sp-5);
-		grid-template-columns: minmax(0, 1fr) minmax(16rem, 24rem);
-		align-items: start;
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+		gap: var(--sp-2);
 	}
 
-	.side {
+	.chip {
 		display: grid;
-		grid-template-columns: minmax(0, 1fr);
-		gap: var(--sp-5);
+		gap: 0.15rem;
+		padding: var(--sp-2);
+		background: var(--c-surface);
+		border: var(--border);
+		border-radius: var(--radius-md);
+		text-align: left;
+		cursor: pointer;
+	}
+
+	.chip:hover {
+		border-color: var(--c-gold-line);
+	}
+
+	.chip-label {
+		font-size: 0.62rem;
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
+		color: var(--c-text-subtle);
+	}
+
+	.chip-value {
+		display: flex;
+		align-items: center;
+		gap: 0.2rem;
+		font-weight: 700;
 	}
 
 	.data-table th[scope='row'] {
@@ -494,22 +878,14 @@
 		text-decoration: none;
 	}
 
-	.clickable {
-		cursor: pointer;
-		transition: background var(--t-fast);
-	}
-
-	.clickable:hover {
-		background: rgb(255 255 255 / 0.03);
-	}
-
 	.date {
 		display: block;
 		font-size: var(--fs-xs);
 		font-weight: 400;
 	}
 
-	.place {
+	.data-table .place {
+		display: table-cell;
 		white-space: nowrap;
 	}
 
@@ -538,10 +914,21 @@
 		background: var(--c-gold);
 	}
 
-	.award-cell {
-		display: flex;
-		flex-wrap: wrap;
+	.cell-btn {
+		display: inline-flex;
+		align-items: center;
 		gap: 0.25rem;
+		padding: 0.2rem 0.45rem;
+		background: none;
+		border: 1px dashed var(--c-border-strong);
+		border-radius: var(--radius-sm);
+		white-space: nowrap;
+		cursor: pointer;
+	}
+
+	.cell-btn:hover {
+		border-color: var(--c-gold-line);
+		color: var(--c-gold-bright);
 	}
 
 	.open-cell {
@@ -549,6 +936,7 @@
 	}
 
 	.open {
+		justify-self: start;
 		padding: 0.25rem 0.5rem;
 		background: none;
 		border: var(--border-strong);
@@ -565,94 +953,21 @@
 		border-color: var(--c-gold-line);
 	}
 
-	.counts {
-		list-style: none;
-		margin: 0;
-		padding: 0;
-		display: grid;
-		gap: var(--sp-2);
+	/* Side panel */
+	.panel-tabs {
+		margin-inline: calc(-1 * var(--sp-5));
 	}
 
-	.counts li {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: var(--sp-2);
-		font-size: var(--fs-sm);
-	}
-
-	.nemesis {
-		display: grid;
-		gap: var(--sp-4);
-	}
-
-	.summary {
-		font-size: var(--fs-sm);
-		color: var(--c-text-muted);
-	}
-
-	.summary strong {
-		color: var(--c-text);
-	}
-
-	.kv {
-		display: grid;
-		gap: var(--sp-2);
-	}
-
-	.kv div {
-		display: flex;
-		justify-content: space-between;
-		gap: var(--sp-3);
-		font-size: var(--fs-sm);
-	}
-
-	.kv dt {
-		color: var(--c-text-muted);
-	}
-
-	.kv dd {
-		font-weight: 700;
-	}
-
-	.game-meta {
-		display: flex;
-		flex-wrap: wrap;
-		align-items: center;
-		gap: 0.3rem;
-		margin-top: 0.2rem;
-		font-size: var(--fs-xs);
-		font-weight: 400;
-	}
-
-	.won .place {
-		color: var(--c-gold);
-		font-weight: 700;
-	}
-
-	.note {
-		display: inline-block;
-		padding: 0.05rem 0.35rem;
-		border-radius: var(--radius-sm);
-		font-weight: 600;
-	}
-
-	.note.dd {
-		background: var(--c-gold-soft);
-		color: var(--c-gold-bright);
-	}
-
-	.note.nem {
-		background: rgb(169 139 255 / 0.15);
-		color: var(--c-violet);
+	.tab-body {
+		padding: var(--sp-5) var(--sp-5) 0;
 	}
 
 	.btn {
 		justify-self: start;
 	}
 
-	@media (max-width: 1000px) {
-		.cols {
+	@media (max-width: 760px) {
+		.shelf {
 			grid-template-columns: minmax(0, 1fr);
 		}
 	}

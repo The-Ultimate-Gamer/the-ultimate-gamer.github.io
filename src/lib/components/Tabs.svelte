@@ -154,6 +154,21 @@
 		padding-block: var(--sp-2);
 	}
 
+	@media (max-width: 480px) {
+		.bar {
+			padding: 0 var(--sp-4);
+		}
+
+		.tablist {
+			gap: var(--sp-3);
+		}
+
+		.tab {
+			font-size: var(--fs-xs);
+			letter-spacing: var(--tracking-wide);
+		}
+	}
+
 	.tabpanel:focus-visible {
 		box-shadow: inset var(--focus-ring);
 	}

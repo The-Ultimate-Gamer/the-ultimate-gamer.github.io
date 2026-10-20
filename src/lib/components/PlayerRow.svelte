@@ -6,14 +6,17 @@
 	import CategoryBadge from './CategoryBadge.svelte';
 	import AwardBadge from './AwardBadge.svelte';
 	import TokenDisplay from './TokenDisplay.svelte';
+	import { getCategoryContent } from '#lib/content/categories.ts';
 
 	interface Props {
 		entry: StandingEntry;
 		threshold?: number | null;
 		showTokens?: boolean;
+		/** When set, the name opens details instead of linking to the profile. */
+		onselect?: (slug: string) => void;
 	}
 
-	let { entry, threshold, showTokens = true }: Props = $props();
+	let { entry, threshold, showTokens = true, onselect }: Props = $props();
 
 	// Already conveyed by the status badge.
 	const STATUS_AWARDS = new Set(['challenger', 'ultimate-gamer']);
@@ -31,7 +34,12 @@
 	);
 </script>
 
-<tr class="row {status}" class:leader={entry.rank === 1}>
+<tr
+	class="row {status}"
+	class:leader={entry.rank === 1}
+	class:clickable={!!onselect}
+	onclick={onselect ? () => onselect(entry.player.slug) : undefined}
+>
 	<td class="rank">
 		<span class="rank-num num">{entry.rank}</span>
 	</td>
@@ -44,9 +52,24 @@
 				highlight={status === 'contender' ? null : status}
 			/>
 			<div class="who">
-				<a class="name" href={resolve('/players/[slug]', { slug: entry.player.slug })}>
-					{entry.player.name}
-				</a>
+				{#if onselect}
+					<button
+						class="name"
+						type="button"
+						aria-haspopup="dialog"
+						onclick={(e) => {
+							e.stopPropagation();
+							onselect(entry.player.slug);
+						}}
+					>
+						{entry.player.name}
+						<span class="visually-hidden">: show details</span>
+					</button>
+				{:else}
+					<a class="name" href={resolve('/players/[slug]', { slug: entry.player.slug })}>
+						{entry.player.name}
+					</a>
+				{/if}
 				<div class="meta">
 					<StatusBadge {status} size="sm" />
 					{#if entry.isFirstTournament}<span class="rookie">First tournament</span>{/if}
@@ -57,7 +80,12 @@
 						<!-- The category wins column is hidden on narrow screens; show them here instead. -->
 						<span class="wins-inline">
 							{#each entry.categoryWins as cat, i (`${cat}-${i}`)}
-								<CategoryBadge slug={cat} iconOnly size="sm" />
+								<CategoryBadge
+									slug={cat}
+									iconOnly
+									size="sm"
+									tooltip="Won a {getCategoryContent(cat).name} game"
+								/>
 							{/each}
 						</span>
 					{/if}
@@ -82,7 +110,12 @@
 		{#if entry.categoryWins?.length}
 			<span class="cat-wins">
 				{#each entry.categoryWins as cat, i (`${cat}-${i}`)}
-					<CategoryBadge slug={cat} iconOnly size="sm" />
+					<CategoryBadge
+						slug={cat}
+						iconOnly
+						size="sm"
+						tooltip="Won a {getCategoryContent(cat).name} game"
+					/>
 				{/each}
 			</span>
 		{:else}
@@ -156,13 +189,28 @@
 		min-width: 0;
 	}
 
+	.clickable {
+		cursor: pointer;
+	}
+
 	.name {
+		justify-self: start;
+		padding: 0;
+		background: none;
+		border: 0;
+		color: inherit;
+		text-align: left;
+		cursor: pointer;
 		font-family: var(--font-display);
 		font-size: var(--fs-lg);
 		font-weight: 700;
 		text-decoration: none;
 		letter-spacing: 0.02em;
 		overflow-wrap: anywhere;
+	}
+
+	.name:hover {
+		color: var(--c-gold-bright);
 	}
 
 	.leader .name {

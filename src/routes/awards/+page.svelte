@@ -31,10 +31,16 @@
 
 	type Item = (typeof gallery)[number];
 
-	// Until the data arrives every award is listed together; then the empty ones collapse.
+	// Awarded ones first; the rest stay visible so everyone knows what can still be won.
 	const loaded = $derived(awards.status === 'success');
-	const awarded = $derived(loaded ? gallery.filter((a) => a.data?.recipients?.length) : gallery);
-	const notYet = $derived(loaded ? gallery.filter((a) => !a.data?.recipients?.length) : []);
+	const ordered = $derived(
+		loaded
+			? [
+					...gallery.filter((a) => a.data?.recipients?.length),
+					...gallery.filter((a) => !a.data?.recipients?.length)
+				]
+			: gallery
+	);
 
 	let openSlug = $state<string | null>(null);
 	const openAward = $derived(gallery.find((a) => a.slug === openSlug) ?? null);
@@ -88,7 +94,12 @@
 
 	{#snippet card(award: Item)}
 		{@const recipients = award.data?.recipients ?? []}
-		<li class="award" class:crown={award.slug === 'ultimate-gamer'} id={award.slug}>
+		<li
+			class="award"
+			class:crown={award.slug === 'ultimate-gamer'}
+			class:unawarded={loaded && !recipients.length}
+			id={award.slug}
+		>
 			<span class="icon" aria-hidden="true">{award.icon}</span>
 			<div class="body">
 				<div class="title-row">
@@ -119,23 +130,10 @@
 	{/snippet}
 
 	<ul class="gallery">
-		{#each awarded as award (award.slug)}
+		{#each ordered as award (award.slug)}
 			{@render card(award)}
 		{/each}
 	</ul>
-
-	{#if notYet.length}
-		<details class="not-yet">
-			<summary>
-				Not yet awarded <span class="num subtle">({notYet.length})</span>
-			</summary>
-			<ul class="gallery">
-				{#each notYet as award (award.slug)}
-					{@render card(award)}
-				{/each}
-			</ul>
-		</details>
-	{/if}
 
 	<SidePanel
 		open={!!openAward}
@@ -185,6 +183,16 @@
 		border: var(--border);
 		border-radius: var(--radius-lg);
 		scroll-margin-top: 5rem;
+	}
+
+	.unawarded {
+		background: var(--c-bg-raised);
+		border-style: dashed;
+	}
+
+	.unawarded .icon {
+		filter: grayscale(0.6);
+		opacity: 0.75;
 	}
 
 	.crown {
@@ -289,21 +297,6 @@
 	.chev {
 		margin-left: auto;
 		color: var(--c-gold);
-	}
-
-	.not-yet {
-		display: grid;
-		gap: var(--sp-4);
-	}
-
-	.not-yet summary {
-		cursor: pointer;
-		font-family: var(--font-display);
-		font-size: var(--fs-lg);
-		font-weight: 700;
-		text-transform: uppercase;
-		letter-spacing: var(--tracking-wide);
-		margin-bottom: var(--sp-4);
 	}
 
 	.group {

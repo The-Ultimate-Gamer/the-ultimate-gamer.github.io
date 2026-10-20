@@ -22,12 +22,15 @@
 		<nav aria-label="Footer">
 			<ul>
 				<li><a href={resolve('/rules')}>How it works</a></li>
-				<li><a href={resolve('/players')}>All-time records</a></li>
-				<li><a href={resolve('/tournaments')}>Hall of champions</a></li>
+				<li><a href="{resolve('/rules')}#points">Scoring</a></li>
+				<li><a href="{resolve('/rules')}#tokens">Tokens & Nemeses</a></li>
+				<li><a href={resolve('/awards')}>Award guide</a></li>
+				<li><a href={resolve('/games')}>Game library</a></li>
 			</ul>
 		</nav>
 		<p class="source subtle">
 			Results are published separately and loaded live from <span class="num">{dataHost}</span>.
+			<a href="https://github.com/The-Ultimate-Gamer" rel="external noopener">Source on GitHub</a>
 		</p>
 	</div>
 </footer>

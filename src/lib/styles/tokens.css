@@ -35,6 +35,8 @@
 	--c-danger: #ff5468;
 	--c-danger-soft: rgb(255 84 104 / 0.12);
 	--c-violet: #a98bff;
+	/* Discord brand colour, for linked Discord accounts. */
+	--c-discord: #5865f2;
 
 	/* Typography */
 	--font-sans:

@@ -27,10 +27,12 @@
 {#if stale && generatedAt}
 	<p class="stale" role="status">
 		<span aria-hidden="true">⚠</span>
-		No updates since
-		<time datetime={generatedAt} title={formatDateTime(generatedAt)}
-			>{formatRelative(generatedAt, now)}</time
-		>. Results may be behind, or the tournament has ended without being closed yet.
+		<span>
+			No updates since
+			<time datetime={generatedAt} title={formatDateTime(generatedAt)}
+				>{formatRelative(generatedAt, now)}</time
+			>. Results may be behind, or the tournament has ended without being closed yet.
+		</span>
 	</p>
 {/if}
 

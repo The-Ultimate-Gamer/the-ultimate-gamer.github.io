@@ -275,6 +275,15 @@ export interface PlayerSummary {
 	/** Best final placement in a completed tournament. The champion counts as 1st. */
 	bestPlacement?: number | null;
 	current?: { tournament: TournamentRef; rank: number; points: number } | null;
+	/** Linked Discord account. Names are copied from Discord by the admin tool and may be missing. */
+	discord?: DiscordAccount | null;
+}
+
+export interface DiscordAccount {
+	/** Numeric Discord user id. Validate with `discordProfileUrl()` before linking. */
+	id: string;
+	username?: string | null;
+	displayName?: string | null;
 }
 
 export interface PlayersIndexData {

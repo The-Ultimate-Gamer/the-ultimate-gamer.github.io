@@ -22,18 +22,10 @@
 			>
 			<span class="title">is the Ultimate Gamer</span>
 		</h2>
-		<p class="facts">
-			<span><span class="num">{champion.points}</span> pts</span>
-			<span>Finished <span class="num">#{champion.rank}</span> in points</span>
-			{#if decidingGame}
-				<span
-					>Decided in game <span class="num">#{decidingGame.number}</span> · {decidingGame.game
-						.name}</span
-				>
-			{/if}
-		</p>
-		{#if champion.rank !== 1}
-			<p class="note">Points don’t crown the champion — winning a game as a Challenger does.</p>
+		{#if decidingGame}
+			<p class="facts">
+				Decided in game <span class="num">#{decidingGame.number}</span> · {decidingGame.game.name}
+			</p>
 		{/if}
 	</div>
 </section>
@@ -95,17 +87,8 @@
 	}
 
 	.facts {
-		display: flex;
-		flex-wrap: wrap;
-		gap: var(--sp-1) var(--sp-5);
 		font-size: var(--fs-sm);
 		color: var(--c-text-muted);
-	}
-
-	.note {
-		font-size: var(--fs-sm);
-		color: var(--c-text-muted);
-		font-style: italic;
 	}
 
 	@media (max-width: 600px) {

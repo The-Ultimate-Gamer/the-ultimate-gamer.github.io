@@ -44,7 +44,7 @@ All tournament data lives in a **separate repository** ([The-Ultimate-Gamer/data
 ## Routing model
 
 - **Prerendered static shells:** `/`, `/players`, `/tournaments`, `/games`, `/awards`, `/rules` (`export const prerender = true` in `src/routes/+layout.ts`). `/history` only redirects to `/tournaments` for old links.
-- **Page roles:** `/` is a slim welcome page with a "Watch the live tournament" button. The tournament page (`/tournaments/[slug]`) is the live view: standings, next game, schedule. There is no separate Live page.
+- **Page roles:** `/` is a slim welcome page with a "Watch the live tournament" button. The tournament page (`/tournaments/[slug]`) is the live view: standings, next game, schedule. There is no separate Live page. Below 1080px its standings, schedule and next game share one card with three tabs.
 - **Client-rendered dynamic routes:** `/players/[slug]` and `/tournaments/[slug]` have `prerender = false` and are served by the `404.html` fallback on GitHub Pages. Do not try to prerender them, because that would mean fetching data at build time.
 - **Link previews:** chat apps can't preview those dynamic routes (HTTP 404, no data in the HTML). The data repository therefore exports share pages at `<data URL>share/players/<slug>/` and `share/tournaments/<slug>/`, with preview tags and a redirect back here. The Share buttons copy those links.
 - **Static explanatory copy** (rules, award and category descriptions) lives in `src/lib/content/` so it renders without data.
@@ -71,7 +71,9 @@ docs/data-contract.md          JSON contract reference
 
 **Key components:**
 
-- `Leaderboard` / `PlayerRow`: the standings table, with a legend for points, tokens and icons.
+- `Leaderboard` / `PlayerRow`: the standings table, with a legend for points per place and the Challenger threshold. Icons and tokens explain themselves on hover; clicking a name opens `StandingDetail` in a side panel.
+- `FilterLayout`, `FilterOptions`, `FilterSelect`, `ResultsToolbar`, `ViewSwitch`: the filter sidebar and Cards/Table toggle shared by the Tournaments, Players and Games pages.
+- `PlayerAwardsDetail`, `PlayerCategoriesDetail`, `PlayerNemesesDetail`, `PlayerMatches`: side-panel content on the player page, for the whole career or one tournament.
 - `TournamentProgress`: category timeline ("Schedule"); played games open in a side panel.
 - `GameSelectionPanel`: nominations and draw. `NemesisPairs`: public Nemeses for the next game.
 - `GameResultDetail`: one game's full results.
@@ -80,6 +82,7 @@ docs/data-contract.md          JSON contract reference
 - `PageMeta`: every page's title, description and link-preview tags (use it instead of a bare `<title>`).
 - `ShareButton`: shares the data repository's preview page for a player or tournament (`shareUrl()` in `client.ts`).
 - `ChampionBanner`.
+- `DiscordLink`: a player's linked Discord account (`discordProfileUrl()` in `src/lib/discord.ts` validates the id). The site never calls Discord; the admin tool copies names and pictures into the data.
 - Badges: `StatusBadge`, `CategoryBadge`, `AwardBadge`, `TokenDisplay`, `StatusPill`.
 - States: `DataView`, `LoadingState`, `ErrorState`, `EmptyState`, `NotFoundState`.
 - Layout: `PageTitle`, `LastUpdated`, `SiteHeader`, `SiteFooter`.

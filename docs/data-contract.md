@@ -76,9 +76,10 @@ Besides the JSON below, the export publishes two kinds of non-JSON files next to
   - `detail` is a human-readable supporting statistic.
 - **GameInfo:** `{ slug, name, categories: slug[], description?, minPlayers?, maxPlayers?, timesPlayed?, timesNominated?, lastPlayed?: { tournament, gameNumber, playedAt? }, available? }`
   - A game may belong to several categories.
-- **PlayerSummary:** `{ slug, name, initials?, avatarUrl?, firstTournament?, tournamentsPlayed?, ultimateGamerWins?, challengerAppearances?, gameWins?, podiumFinishes?, awardCount?, bestPlacement?, current?: { tournament, rank, points } }`
+- **PlayerSummary:** `{ slug, name, initials?, avatarUrl?, firstTournament?, tournamentsPlayed?, ultimateGamerWins?, challengerAppearances?, gameWins?, podiumFinishes?, awardCount?, bestPlacement?, current?: { tournament, rank, points }, discord?: { id, username?, displayName? } }`
   - `avatarUrl` is an `https:` URL, or a path relative to the data URL for pictures hosted with the data (for example `avatars/tnoy.jpg`). Anything else is ignored.
   - `bestPlacement` is the best final placement (`finish`) in a completed tournament, so the champion counts as 1st.
+  - `discord` is the player's linked Discord account, or `null`. `id` is the numeric user id (15–21 digits); `username` and `displayName` are copied from Discord by the admin tool (`ug-admin discord`) and are `null` until fetched. A Discord picture, when chosen, is stored as the player's hosted avatar, so `avatarUrl` covers it. The site links to `https://discord.com/users/<id>` and never calls Discord itself.
 - **PlayerProfile:** a `PlayerSummary` plus:
   - `tournaments?: [{ tournament, startDate?, status, placement?, finish?, points?, gamesWon?, podiums?, wasChallenger?, wasChampion? }]`
     - `placement` is the points rank. `finish` is the final placement once the tournament is over: the champion is 1st and everyone else follows by points. It is null while the tournament is running.

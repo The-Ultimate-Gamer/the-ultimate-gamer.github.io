@@ -10,6 +10,11 @@
 	import LastUpdated from '#lib/components/LastUpdated.svelte';
 	import { getCategoryContent } from '#lib/content/categories.ts';
 	import { formatDate } from '#lib/format.ts';
+	import FilterLayout from '#lib/components/FilterLayout.svelte';
+	import FilterOptions from '#lib/components/FilterOptions.svelte';
+	import FilterSelect from '#lib/components/FilterSelect.svelte';
+	import ResultsToolbar from '#lib/components/ResultsToolbar.svelte';
+	import type { ViewMode } from '#lib/components/ViewSwitch.svelte';
 	import type { GameInfo } from '#lib/data/types.ts';
 
 	const games = useResource(getGames);
@@ -21,8 +26,7 @@
 	let category = $state('all');
 	let status = $state<Status>('all');
 	let sort = $state<Sort>('name');
-	let view = $state<'cards' | 'table'>('cards');
-	let filtersOpen = $state(false);
+	let view = $state<ViewMode>('cards');
 
 	const statusOptions: { id: Status; label: string }[] = [
 		{ id: 'all', label: 'All games' },
@@ -141,350 +145,170 @@
 	>
 		{#snippet children({ games: list })}
 			{@const shown = visible(list)}
-			<div class="library">
-				<aside class="panel filters" aria-label="Filters">
-					<button
-						class="filters-toggle"
-						type="button"
-						aria-expanded={filtersOpen}
-						aria-controls="filter-body"
-						onclick={() => (filtersOpen = !filtersOpen)}
-					>
-						Filters & sorting
-						{#if activeFilters}<span class="badge num">{activeFilters}</span>{/if}
-						<span class="chev" aria-hidden="true">{filtersOpen ? '▴' : '▾'}</span>
-					</button>
-
-					<div id="filter-body" class="filter-body" class:open={filtersOpen}>
-						<fieldset>
-							<legend>Category</legend>
-							<label class="option">
-								<input type="radio" name="category" value="all" bind:group={category} />
-								<span>All categories</span>
-								<span class="num count">{list.length}</span>
-							</label>
-							{#each categoryGroups.tournament as c (c.slug)}
-								<label class="option">
-									<input type="radio" name="category" value={c.slug} bind:group={category} />
-									<span
-										><span aria-hidden="true">{getCategoryContent(c.slug).icon}</span>
-										{c.name}</span
-									>
-									<span class="num count">{countFor(list, c.slug)}</span>
-								</label>
-							{/each}
-						</fieldset>
-
-						{#if categoryGroups.tags.length}
-							<fieldset>
-								<legend>Tags <span class="hint">· not used by a tournament yet</span></legend>
-								{#each categoryGroups.tags as c (c.slug)}
-									<label class="option">
-										<input type="radio" name="category" value={c.slug} bind:group={category} />
-										<span
-											><span aria-hidden="true">{getCategoryContent(c.slug).icon}</span>
-											{c.name}</span
-										>
-										<span class="num count">{countFor(list, c.slug)}</span>
-									</label>
-								{/each}
-							</fieldset>
-						{/if}
-
-						<fieldset>
-							<legend>Status</legend>
-							{#each statusOptions as o (o.id)}
-								<label class="option">
-									<input type="radio" name="status" value={o.id} bind:group={status} />
-									<span>{o.label}</span>
-								</label>
-							{/each}
-						</fieldset>
-
-						<label class="sort">
-							<span class="legend-like">Sort by</span>
-							<select bind:value={sort}>
-								{#each sortOptions as o (o.id)}<option value={o.id}>{o.label}</option>{/each}
-							</select>
-						</label>
-
-						{#if activeFilters}
-							<button class="btn reset" type="button" onclick={reset}>Clear filters</button>
-						{/if}
-					</div>
-				</aside>
-
-				<div class="results">
-					<div class="toolbar">
-						<p class="subtle" aria-live="polite">
-							<span class="num">{shown.length}</span> of <span class="num">{list.length}</span> games
-						</p>
-						<div class="view-switch" role="group" aria-label="View">
-							<button type="button" aria-pressed={view === 'cards'} onclick={() => (view = 'cards')}
-								>Cards</button
-							>
-							<button type="button" aria-pressed={view === 'table'} onclick={() => (view = 'table')}
-								>Table</button
-							>
-						</div>
-					</div>
-
-					{#if category !== 'all'}
-						{@const desc =
-							categories.data?.categories.find((c) => c.slug === category)?.description ||
-							getCategoryContent(category).blurb}
-						{#if desc}<p class="cat-desc muted">{desc}</p>{/if}
-					{/if}
-
-					{#if !shown.length}
-						<EmptyState
-							title="No matching games"
-							message="No games match these filters. Try clearing them."
+			<FilterLayout active={activeFilters} onreset={reset}>
+				{#snippet filters()}
+					<FilterOptions
+						legend="Category"
+						name="category"
+						bind:value={category}
+						options={[
+							{ value: 'all', label: 'All categories', count: list.length },
+							...categoryGroups.tournament.map((c) => ({
+								value: c.slug,
+								label: c.name,
+								icon: getCategoryContent(c.slug).icon,
+								count: countFor(list, c.slug)
+							}))
+						]}
+					/>
+					{#if categoryGroups.tags.length}
+						<FilterOptions
+							legend="Tags"
+							hint="not used by a tournament yet"
+							name="category"
+							bind:value={category}
+							options={categoryGroups.tags.map((c) => ({
+								value: c.slug,
+								label: c.name,
+								icon: getCategoryContent(c.slug).icon,
+								count: countFor(list, c.slug)
+							}))}
 						/>
-					{:else if view === 'cards'}
-						<ul class="games">
-							{#each shown as g (g.slug)}
-								<li class="game" class:unplayed={!g.timesPlayed}>
-									<div class="cats">
-										{#each g.categories as c (c)}<CategoryBadge slug={c} size="sm" />{/each}
+					{/if}
+					<FilterOptions
+						legend="Status"
+						name="status"
+						bind:value={status}
+						options={statusOptions.map((o) => ({ value: o.id, label: o.label }))}
+					/>
+					<FilterSelect
+						label="Sort by"
+						bind:value={sort}
+						options={sortOptions.map((o) => ({ value: o.id, label: o.label }))}
+					/>
+				{/snippet}
+
+				<ResultsToolbar shown={shown.length} total={list.length} noun="games" bind:view />
+
+				{#if category !== 'all'}
+					{@const desc =
+						categories.data?.categories.find((c) => c.slug === category)?.description ||
+						getCategoryContent(category).blurb}
+					{#if desc}<p class="cat-desc muted">{desc}</p>{/if}
+				{/if}
+
+				{#if !shown.length}
+					<EmptyState
+						title="No matching games"
+						message="No games match these filters. Try clearing them."
+					/>
+				{:else if view === 'cards'}
+					<ul class="games">
+						{#each shown as g (g.slug)}
+							<li class="game" class:unplayed={!g.timesPlayed}>
+								<div class="cats">
+									{#each g.categories as c (c)}<CategoryBadge slug={c} size="sm" />{/each}
+								</div>
+								<h2>{g.name}</h2>
+								{#if g.description}<p class="muted desc">{g.description}</p>{/if}
+								<dl class="facts">
+									<div>
+										<dt>Players</dt>
+										<dd class="num">{playerCount(g)}</dd>
 									</div>
-									<h2>{g.name}</h2>
-									{#if g.description}<p class="muted desc">{g.description}</p>{/if}
-									<dl class="facts">
-										<div>
-											<dt>Players</dt>
-											<dd class="num">{playerCount(g)}</dd>
-										</div>
-										<div>
-											<dt>Played</dt>
-											<dd class="num">{g.timesPlayed ?? 0}×</dd>
-										</div>
-										<div>
-											<dt>Nominated</dt>
-											<dd class="num">{g.timesNominated != null ? `${g.timesNominated}×` : '–'}</dd>
-										</div>
-									</dl>
-									<p class="foot">
-										{#if g.lastPlayed}
-											<span class="subtle">
-												Last played in
+									<div>
+										<dt>Played</dt>
+										<dd class="num">{g.timesPlayed ?? 0}×</dd>
+									</div>
+									<div>
+										<dt>Nominated</dt>
+										<dd class="num">{g.timesNominated != null ? `${g.timesNominated}×` : '–'}</dd>
+									</div>
+								</dl>
+								<p class="foot">
+									{#if g.lastPlayed}
+										<span class="subtle">
+											Last played in
+											<a
+												href="{resolve('/tournaments/[slug]', {
+													slug: g.lastPlayed.tournament.slug
+												})}#game-{g.lastPlayed.gameNumber}">{g.lastPlayed.tournament.name}</a
+											>
+										</span>
+									{:else}
+										<span class="tag never">Never played</span>
+									{/if}
+									{#if g.available === false}
+										<span class="tag off">Not in rotation</span>
+									{:else if g.available}
+										<span class="tag on">Available</span>
+									{/if}
+								</p>
+							</li>
+						{/each}
+					</ul>
+				{:else}
+					<div class="panel table-scroll">
+						<table class="data-table">
+							<caption class="visually-hidden"
+								>Games, {sortOptions.find((o) => o.id === sort)?.label}</caption
+							>
+							<thead>
+								<tr>
+									<th scope="col">Game</th>
+									<th scope="col">Categories</th>
+									<th scope="col">Players</th>
+									<th scope="col">Played</th>
+									<th scope="col">Nominated</th>
+									<th scope="col">Last played</th>
+									<th scope="col">Status</th>
+								</tr>
+							</thead>
+							<tbody>
+								{#each shown as g (g.slug)}
+									<tr>
+										<th scope="row">{g.name}</th>
+										<td>
+											<span class="cats">
+												{#each g.categories as c (c)}<CategoryBadge
+														slug={c}
+														size="sm"
+														iconOnly
+													/>{/each}
+											</span>
+										</td>
+										<td class="num">{playerCount(g)}</td>
+										<td class="num">{g.timesPlayed ?? 0}</td>
+										<td class="num">{g.timesNominated ?? '–'}</td>
+										<td>
+											{#if g.lastPlayed}
 												<a
 													href="{resolve('/tournaments/[slug]', {
 														slug: g.lastPlayed.tournament.slug
-													})}#game-{g.lastPlayed.gameNumber}">{g.lastPlayed.tournament.name}</a
+													})}#game-{g.lastPlayed.gameNumber}"
+													>{g.lastPlayed.playedAt
+														? formatDate(g.lastPlayed.playedAt)
+														: g.lastPlayed.tournament.name}</a
 												>
-											</span>
-										{:else}
-											<span class="tag never">Never played</span>
-										{/if}
-										{#if g.available === false}
-											<span class="tag off">Not in rotation</span>
-										{:else if g.available}
-											<span class="tag on">Available</span>
-										{/if}
-									</p>
-								</li>
-							{/each}
-						</ul>
-					{:else}
-						<div class="panel table-scroll">
-							<table class="data-table">
-								<caption class="visually-hidden"
-									>Games, {sortOptions.find((o) => o.id === sort)?.label}</caption
-								>
-								<thead>
-									<tr>
-										<th scope="col">Game</th>
-										<th scope="col">Categories</th>
-										<th scope="col">Players</th>
-										<th scope="col">Played</th>
-										<th scope="col">Nominated</th>
-										<th scope="col">Last played</th>
-										<th scope="col">Status</th>
+											{:else}<span class="subtle">Never</span>{/if}
+										</td>
+										<td>
+											{#if g.available === false}<span class="tag off">Not in rotation</span>
+											{:else if g.available}<span class="tag on">Available</span>
+											{:else}<span class="subtle">–</span>{/if}
+										</td>
 									</tr>
-								</thead>
-								<tbody>
-									{#each shown as g (g.slug)}
-										<tr>
-											<th scope="row">{g.name}</th>
-											<td>
-												<span class="cats">
-													{#each g.categories as c (c)}<CategoryBadge
-															slug={c}
-															size="sm"
-															iconOnly
-														/>{/each}
-												</span>
-											</td>
-											<td class="num">{playerCount(g)}</td>
-											<td class="num">{g.timesPlayed ?? 0}</td>
-											<td class="num">{g.timesNominated ?? '–'}</td>
-											<td>
-												{#if g.lastPlayed}
-													<a
-														href="{resolve('/tournaments/[slug]', {
-															slug: g.lastPlayed.tournament.slug
-														})}#game-{g.lastPlayed.gameNumber}"
-														>{g.lastPlayed.playedAt
-															? formatDate(g.lastPlayed.playedAt)
-															: g.lastPlayed.tournament.name}</a
-													>
-												{:else}<span class="subtle">Never</span>{/if}
-											</td>
-											<td>
-												{#if g.available === false}<span class="tag off">Not in rotation</span>
-												{:else if g.available}<span class="tag on">Available</span>
-												{:else}<span class="subtle">–</span>{/if}
-											</td>
-										</tr>
-									{/each}
-								</tbody>
-							</table>
-						</div>
-					{/if}
-				</div>
-			</div>
+								{/each}
+							</tbody>
+						</table>
+					</div>
+				{/if}
+			</FilterLayout>
 		{/snippet}
 	</DataView>
 </div>
 
 <style>
-	.library {
-		display: grid;
-		grid-template-columns: 15rem minmax(0, 1fr);
-		gap: var(--sp-5);
-		align-items: start;
-	}
-
-	.filters {
-		position: sticky;
-		top: 5.5rem;
-		max-height: calc(100vh - 7rem);
-		overflow-y: auto;
-	}
-
-	.filters-toggle {
-		display: none;
-	}
-
-	.filter-body {
-		display: grid;
-		gap: var(--sp-4);
-		padding: var(--sp-4);
-	}
-
-	fieldset {
-		margin: 0;
-		padding: 0;
-		border: 0;
-		display: grid;
-		gap: 0.15rem;
-	}
-
-	legend,
-	.legend-like {
-		margin-bottom: var(--sp-2);
-		font-family: var(--font-display);
-		font-size: var(--fs-xs);
-		font-weight: 700;
-		letter-spacing: var(--tracking-wider);
-		text-transform: uppercase;
-		color: var(--c-text-subtle);
-	}
-
-	.hint {
-		text-transform: none;
-		letter-spacing: normal;
-		font-family: var(--font-sans);
-		font-weight: 400;
-	}
-
-	.option {
-		display: grid;
-		grid-template-columns: auto 1fr auto;
-		align-items: center;
-		gap: var(--sp-2);
-		padding: 0.3rem var(--sp-2);
-		border-radius: var(--radius-sm);
-		font-size: var(--fs-sm);
-		cursor: pointer;
-	}
-
-	.option:hover {
-		background: var(--c-surface-2);
-	}
-
-	.option:has(input:checked) {
-		background: var(--c-gold-soft);
-		color: var(--c-gold-bright);
-	}
-
-	.option input {
-		accent-color: var(--c-gold);
-		margin: 0;
-	}
-
-	.count {
-		font-size: var(--fs-xs);
-		color: var(--c-text-subtle);
-	}
-
-	.sort {
-		display: grid;
-	}
-
-	select {
-		padding: 0.45rem 0.6rem;
-		background: var(--c-surface-2);
-		border: var(--border-strong);
-		border-radius: var(--radius-md);
-		font: inherit;
-		font-size: var(--fs-sm);
-		color: var(--c-text);
-	}
-
-	.reset {
-		justify-self: start;
-	}
-
-	.results {
-		display: grid;
-		gap: var(--sp-4);
-		min-width: 0;
-	}
-
-	.toolbar {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: var(--sp-3);
-		font-size: var(--fs-sm);
-	}
-
-	.view-switch {
-		display: inline-flex;
-		border: var(--border-strong);
-		border-radius: var(--radius-md);
-		overflow: hidden;
-	}
-
-	.view-switch button {
-		padding: 0.35rem 0.8rem;
-		background: none;
-		border: 0;
-		font-size: var(--fs-xs);
-		font-weight: 700;
-		letter-spacing: var(--tracking-wide);
-		text-transform: uppercase;
-		color: var(--c-text-muted);
-		cursor: pointer;
-	}
-
-	.view-switch button[aria-pressed='true'] {
-		background: var(--c-gold);
-		color: var(--c-on-gold);
-	}
-
 	.cat-desc {
 		max-width: 65ch;
 	}
@@ -587,53 +411,5 @@
 	.off {
 		background: var(--c-surface-3);
 		color: var(--c-text-subtle);
-	}
-
-	@media (max-width: 900px) {
-		.library {
-			grid-template-columns: minmax(0, 1fr);
-		}
-
-		.filters {
-			position: static;
-			max-height: none;
-		}
-
-		.filters-toggle {
-			display: flex;
-			align-items: center;
-			gap: var(--sp-2);
-			width: 100%;
-			padding: var(--sp-3) var(--sp-4);
-			background: none;
-			border: 0;
-			font-family: var(--font-display);
-			font-size: var(--fs-sm);
-			font-weight: 700;
-			letter-spacing: var(--tracking-wide);
-			text-transform: uppercase;
-			cursor: pointer;
-		}
-
-		.badge {
-			padding: 0 0.4rem;
-			border-radius: 999px;
-			background: var(--c-gold);
-			color: var(--c-on-gold);
-			font-size: var(--fs-xs);
-		}
-
-		.chev {
-			margin-left: auto;
-		}
-
-		.filter-body {
-			display: none;
-			border-top: var(--border);
-		}
-
-		.filter-body.open {
-			display: grid;
-		}
 	}
 </style>

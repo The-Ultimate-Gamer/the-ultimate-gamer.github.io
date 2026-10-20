@@ -6,9 +6,11 @@
 		/** Show only the icon (name remains available to assistive tech). */
 		iconOnly?: boolean;
 		size?: 'sm' | 'md' | 'lg';
+		/** Hover text; defaults to the category name for icon-only badges. */
+		tooltip?: string;
 	}
 
-	let { slug, iconOnly = false, size = 'md' }: Props = $props();
+	let { slug, iconOnly = false, size = 'md', tooltip }: Props = $props();
 	const category = $derived(getCategoryContent(slug));
 	const accent = $derived(
 		/^[a-z0-9-]+$/.test(slug) ? `var(--cat-${slug}, var(--c-gold))` : 'var(--c-gold)'
@@ -19,7 +21,7 @@
 	class="category {size}"
 	class:icon-only={iconOnly}
 	style:--accent={accent}
-	title={iconOnly ? category.name : undefined}
+	title={tooltip ?? (iconOnly ? category.name : undefined)}
 >
 	<span class="icon" aria-hidden="true">{category.icon}</span>
 	{#if iconOnly}

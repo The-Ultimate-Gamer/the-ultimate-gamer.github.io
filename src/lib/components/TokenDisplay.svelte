@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { TokenCounts } from '#lib/data/types.ts';
+	import { tokenContent } from '#lib/content/tokens.ts';
 
 	interface Props {
 		tokens?: TokenCounts | null;
@@ -9,10 +10,10 @@
 
 	const items = $derived(
 		tokens
-			? [
-					{ key: 'D', name: 'Double Down', count: tokens.doubleDown },
-					{ key: 'N', name: 'Nominate', count: tokens.nominate }
-				]
+			? (['doubleDown', 'nominate'] as const).map((id) => ({
+					...tokenContent[id],
+					count: tokens[id]
+				}))
 			: []
 	);
 </script>
@@ -20,9 +21,13 @@
 {#if tokens}
 	<span class="tokens">
 		{#each items as item (item.key)}
-			<span class="token" class:spent={item.count <= 0} title="{item.name}: {item.count} remaining">
+			<span
+				class="token"
+				class:spent={item.count <= 0}
+				title="{item.name}: {item.count} left — {item.description}"
+			>
 				<span aria-hidden="true">{item.key}<span class="x">×</span>{item.count}</span>
-				<span class="visually-hidden">{item.name}: {item.count} remaining</span>
+				<span class="visually-hidden">{item.name}: {item.count} left</span>
 			</span>
 		{/each}
 	</span>
@@ -49,6 +54,7 @@
 		font-size: var(--fs-xs);
 		font-weight: 700;
 		text-align: center;
+		cursor: help;
 	}
 
 	.x {
