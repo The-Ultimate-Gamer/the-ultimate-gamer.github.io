@@ -27,6 +27,8 @@ export interface PlayerRef {
 export interface GameRef {
 	slug: Slug;
 	name: string;
+	/** Where to get or play the game (https). Check with `safeLink()` before linking. */
+	url?: string | null;
 }
 
 export interface TournamentRef {
@@ -102,6 +104,8 @@ export interface GameInfo {
 	lastPlayed?: { tournament: TournamentRef; gameNumber: number; playedAt?: string | null } | null;
 	/** Whether the game is currently eligible for nomination. */
 	available?: boolean;
+	/** Where to get or play the game (https). Check with `safeLink()` before linking. */
+	url?: string | null;
 }
 
 export interface GamesData {
@@ -128,8 +132,12 @@ export interface StandingEntry {
 	isFirstTournament?: boolean;
 }
 
+/** One game in the schedule. Categories repeat when the order starts over (a new lap). */
 export interface CategoryProgressEntry {
+	/** Game number. */
 	order: number;
+	/** Pass through the category order this game belongs to (1, 2…). */
+	lap?: number;
 	category: Slug;
 	status: CategoryStatus;
 	gameNumber?: number | null;
@@ -198,7 +206,10 @@ export interface TournamentLeader {
 export interface TournamentSummary {
 	slug: Slug;
 	name: string;
+	/** Older data only; newer data has `tags`. */
 	edition?: string | null;
+	/** Labels such as "LAN" or "Weekend". */
+	tags?: string[];
 	startDate?: string | null;
 	endDate?: string | null;
 	location?: string | null;
@@ -210,8 +221,12 @@ export interface TournamentSummary {
 	pointsTable?: PointsTableEntry[];
 	playerCount?: number;
 	gamesPlayed?: number;
+	/** Distinct categories played so far (at most `categoriesPlanned`). */
 	categoriesCompleted?: number;
+	/** Categories in the order; games loop through them until someone wins. */
 	categoriesPlanned?: number;
+	/** Current (or last) pass through the category order. */
+	lap?: number | null;
 	champion?: PlayerRef | null;
 	leaders?: TournamentLeader[];
 	awards?: AwardGrant[];

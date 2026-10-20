@@ -21,8 +21,14 @@
 </script>
 
 <ol class="progress">
-	{#each items as item (item.order)}
+	{#each items as item, i (item.order)}
 		{@const cat = getCategoryContent(item.category)}
+		{#if (item.lap ?? 1) > 1 && (items[i - 1]?.lap ?? 1) !== item.lap}
+			<li class="lap">
+				<span class="lap-label">Lap {item.lap}</span>
+				<span class="subtle">Every category has been played; the order starts over.</span>
+			</li>
+		{/if}
 		<li class={item.status} style:--accent={accent(item.category)}>
 			<span class="marker" aria-hidden="true">
 				{#if item.status === 'completed'}✓{:else}{item.order}{/if}
@@ -61,6 +67,27 @@
 </ol>
 
 <style>
+	.lap {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: baseline;
+		gap: var(--sp-2);
+		padding: 0 0 var(--sp-4) 0;
+		font-size: var(--fs-xs);
+	}
+
+	.lap::before {
+		display: none;
+	}
+
+	.lap-label {
+		font-family: var(--font-display);
+		font-weight: 700;
+		letter-spacing: var(--tracking-wider);
+		text-transform: uppercase;
+		color: var(--c-info);
+	}
+
 	.progress {
 		list-style: none;
 		margin: 0;

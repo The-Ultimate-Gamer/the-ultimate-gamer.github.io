@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { safeLink } from '#lib/links.ts';
 	import { resolve } from '$app/paths';
 	import type { GameSelection } from '#lib/data/types.ts';
 	import CategoryBadge from './CategoryBadge.svelte';
@@ -30,6 +31,14 @@
 		<p class="selected">
 			<span class="eyebrow">Selected</span>
 			<span class="selected-name">{selection.selected.name}</span>
+			{#if safeLink(selection.selected.url)}
+				<a
+					class="get"
+					href={safeLink(selection.selected.url)}
+					target="_blank"
+					rel="noopener noreferrer external">Get the game <span aria-hidden="true">↗</span></a
+				>
+			{/if}
 		</p>
 	{/if}
 
@@ -97,6 +106,13 @@
 		border: 1px solid var(--c-gold-line);
 		background: var(--c-gold-soft);
 		border-radius: var(--radius-md);
+	}
+
+	.get {
+		justify-self: start;
+		font-size: var(--fs-sm);
+		font-weight: 600;
+		text-decoration: none;
 	}
 
 	.selected-name {

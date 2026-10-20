@@ -18,7 +18,11 @@
 		<span class="subtle date">{formatDateRange(tournament.startDate, tournament.endDate)}</span>
 	</header>
 	<h3><a {href}>{tournament.name}</a></h3>
-	{#if tournament.location}<p class="subtle loc">{tournament.location}</p>{/if}
+	{#if tournament.location || tournament.tags?.length}
+		<p class="subtle loc">
+			{[tournament.tags?.join(' · '), tournament.location].filter(Boolean).join(' · ')}
+		</p>
+	{/if}
 
 	<div class="champ">
 		<span class="eyebrow">Ultimate Gamer</span>
@@ -47,7 +51,9 @@
 	<footer class="subtle">
 		{#if tournament.playerCount != null}<span>{plural(tournament.playerCount, 'player')}</span>{/if}
 		{#if tournament.gamesPlayed != null}<span>{plural(tournament.gamesPlayed, 'game')}</span>{/if}
-		{#if tournament.categoriesCompleted != null}
+		{#if (tournament.lap ?? 1) > 1}
+			<span>Lap {tournament.lap}</span>
+		{:else if tournament.categoriesCompleted != null}
 			<span
 				>{tournament.categoriesCompleted}{tournament.categoriesPlanned
 					? `/${tournament.categoriesPlanned}`

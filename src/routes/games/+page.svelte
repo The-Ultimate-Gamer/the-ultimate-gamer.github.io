@@ -16,6 +16,7 @@
 	import ResultsToolbar from '#lib/components/ResultsToolbar.svelte';
 	import type { ViewMode } from '#lib/components/ViewSwitch.svelte';
 	import type { GameInfo } from '#lib/data/types.ts';
+	import { safeLink } from '#lib/links.ts';
 
 	const games = useResource(getGames);
 	const categories = useResource(getCategories);
@@ -210,6 +211,17 @@
 									{#each g.categories as c (c)}<CategoryBadge slug={c} size="sm" />{/each}
 								</div>
 								<h2>{g.name}</h2>
+								{#if safeLink(g.url)}
+									<a
+										class="get"
+										href={safeLink(g.url)}
+										target="_blank"
+										rel="noopener noreferrer external"
+										>Get the game <span aria-hidden="true">↗</span><span class="visually-hidden">
+											(opens {new URL(g.url!).hostname})</span
+										></a
+									>
+								{/if}
 								{#if g.description}<p class="muted desc">{g.description}</p>{/if}
 								<dl class="facts">
 									<div>
@@ -267,7 +279,20 @@
 							<tbody>
 								{#each shown as g (g.slug)}
 									<tr>
-										<th scope="row">{g.name}</th>
+										<th scope="row">
+											{g.name}
+											{#if safeLink(g.url)}
+												<a
+													class="get-inline"
+													href={safeLink(g.url)}
+													target="_blank"
+													rel="noopener noreferrer external"
+													><span aria-hidden="true">↗</span><span class="visually-hidden"
+														>Get {g.name}</span
+													></a
+												>
+											{/if}
+										</th>
 										<td>
 											<span class="cats">
 												{#each g.categories as c (c)}<CategoryBadge
@@ -345,6 +370,19 @@
 
 	h2 {
 		font-size: var(--fs-xl);
+	}
+
+	.get {
+		justify-self: start;
+		margin-top: calc(-1 * var(--sp-2));
+		font-size: var(--fs-sm);
+		font-weight: 600;
+		text-decoration: none;
+	}
+
+	.get-inline {
+		margin-left: var(--sp-1);
+		text-decoration: none;
 	}
 
 	.desc {

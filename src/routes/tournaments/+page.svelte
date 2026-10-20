@@ -24,6 +24,7 @@
 
 	let status = $state<Status>('all');
 	let year = $state('all');
+	let tag = $state('all');
 	let sort = $state<Sort>('live');
 	let view = $state<ViewMode>('cards');
 
@@ -54,14 +55,23 @@
 		players: (a, b) => (b.playerCount ?? 0) - (a.playerCount ?? 0) || newest(a, b)
 	};
 
-	const activeFilters = $derived((status !== 'all' ? 1 : 0) + (year !== 'all' ? 1 : 0));
+	const activeFilters = $derived(
+		(status !== 'all' ? 1 : 0) + (year !== 'all' ? 1 : 0) + (tag !== 'all' ? 1 : 0)
+	);
 
 	function visible(list: TournamentSummary[]) {
 		return list
 			.filter(
-				(t) => (status === 'all' || t.status === status) && (year === 'all' || yearOf(t) === year)
+				(t) =>
+					(status === 'all' || t.status === status) &&
+					(year === 'all' || yearOf(t) === year) &&
+					(tag === 'all' || (t.tags ?? []).includes(tag))
 			)
 			.sort(sorters[sort]);
+	}
+
+	function tagsOf(list: TournamentSummary[]) {
+		return [...new Set(list.flatMap((t) => t.tags ?? []))];
 	}
 
 	function years(list: TournamentSummary[]) {
@@ -71,6 +81,7 @@
 	function reset() {
 		status = 'all';
 		year = 'all';
+		tag = 'all';
 	}
 </script>
 
@@ -105,6 +116,7 @@
 		{#snippet children({ tournaments })}
 			{@const shown = visible(tournaments)}
 			{@const yearList = years(tournaments)}
+			{@const tagList = tagsOf(tournaments)}
 			<FilterLayout active={activeFilters} onreset={reset}>
 				{#snippet filters()}
 					<FilterOptions
@@ -130,6 +142,21 @@
 									value: y,
 									label: y,
 									count: tournaments.filter((t) => yearOf(t) === y).length
+								}))
+							]}
+						/>
+					{/if}
+					{#if tagList.length}
+						<FilterOptions
+							legend="Type"
+							name="tag"
+							bind:value={tag}
+							options={[
+								{ value: 'all', label: 'Any type' },
+								...tagList.map((t) => ({
+									value: t,
+									label: t,
+									count: tournaments.filter((x) => (x.tags ?? []).includes(t)).length
 								}))
 							]}
 						/>
@@ -210,7 +237,9 @@
 										<td class="num">{t.playerCount ?? '–'}</td>
 										<td class="num">{t.gamesPlayed ?? '–'}</td>
 										<td class="num nowrap">
-											{#if t.categoriesCompleted != null}
+											{#if (t.lap ?? 1) > 1}
+												Lap {t.lap}
+											{:else if t.categoriesCompleted != null}
 												{t.categoriesCompleted}{t.categoriesPlanned
 													? `/${t.categoriesPlanned}`
 													: ''}

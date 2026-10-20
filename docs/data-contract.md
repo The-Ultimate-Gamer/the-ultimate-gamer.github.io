@@ -17,7 +17,7 @@ Every file uses the same wrapper:
 
 Shared shapes:
 
-- `PlayerRef`, `GameRef` and `TournamentRef` are `{ slug, name }`.
+- `PlayerRef`, `GameRef` and `TournamentRef` are `{ slug, name }`. A `GameRef` also has `url?` (an https link to get or play the game) when one is known.
 - `TokenCounts` is `{ doubleDown, nominate }` and counts **remaining** tokens.
 
 ## Files
@@ -49,7 +49,7 @@ Besides the JSON below, the export publishes two kinds of non-JSON files next to
   nextSelection?: GameSelection | null,
   nextNemeses?: NemesisPair[] | null,       // public Nemesis pairs for the next game; null when not live
   standings: StandingEntry[],
-  categories: CategoryProgressEntry[],      // only the categories this tournament uses, in order
+  categories: CategoryProgressEntry[],      // one entry per game: played ones, then the rest of the current lap
   recentResults?: GameResult[]              // newest first; include `tournament` ref
 }
 ```
@@ -63,18 +63,22 @@ Besides the JSON below, the export publishes two kinds of non-JSON files next to
   - Fields: `{ rank, player, points, isChallenger, challengerSinceGame?, isChampion, tokens?, gamesPlayed?, gamesWon?, categoryWins?: slug[], awards?: slug[], isFirstTournament? }`
   - `rank` is the points rank.
   - `isChampion` is separate from `isChallenger`, and the champion does not need to have rank 1.
-- **CategoryProgressEntry:** `{ order, category, status: 'completed'|'active'|'upcoming', gameNumber?, game?, winner? }`
+- **CategoryProgressEntry:** `{ order, lap?, category, status: 'completed'|'active'|'upcoming', gameNumber?, game?, winner? }`
+  - `order` is the game number. Games follow the tournament's category order and start over (a new `lap`) until someone is crowned, so a category can appear more than once; each game is still drawn separately.
 - **GameSelection:** `{ status: 'pending'|'drawn', category?, nominations?: [{ game, nominatedBy?, source: 'winner'|'vote'|'token', entries? }], selected? }`
 - **GameResult:**
   - Fields: `{ number, category, game, tournament?, playedAt?, winner?, results?: GameResultEntry[], newChallengers?: PlayerRef[], decidedTournament?, selection? }`
   - Set `decidedTournament: true` on the game in which a Challenger won the tournament.
 - **GameResultEntry:** `{ player, placement, points, basePoints?, nemesisBonus?, doubleDown?, nemesis?, defeatedNemesis? }`
   - `points` is the final total for that game, including the Double Down multiplier and the Nemesis bonus.
-- **TournamentSummary:** `{ slug, name, edition?, startDate?, endDate?, location?, status: 'upcoming'|'ongoing'|'completed', isDemo?, challengerThreshold?, pointsTable?: [{ placement, points }], playerCount?, gamesPlayed?, categoriesCompleted?, categoriesPlanned?, champion?, leaders?: [{ rank, player, points }], awards?: AwardGrant[] }`
+- **TournamentSummary:** `{ slug, name, tags?: string[], startDate?, endDate?, location?, status: 'upcoming'|'ongoing'|'completed', isDemo?, challengerThreshold?, pointsTable?: [{ placement, points }], playerCount?, gamesPlayed?, categoriesCompleted?, categoriesPlanned?, lap?, champion?, leaders?: [{ rank, player, points }], awards?: AwardGrant[] }`
+  - `tags` are display labels such as "LAN" or "Weekend". Older data had a free-text `edition` instead.
+  - `status` follows the games: upcoming until the first game is drawn, ongoing after that, completed when a Challenger wins (or the organisers end it).
+  - `categoriesPlanned` is the number of categories in the order; `categoriesCompleted` counts distinct categories played (at most `categoriesPlanned`); `lap` is the current (or last) pass through the order.
 - **TournamentDetail:** a `TournamentSummary` plus `{ currentCategory?, currentGame?, nextSelection?, nextNemeses?, standings, categories, games: GameResult[] }`
 - **AwardGrant:** `{ award: slug, player, tournament?, detail? }`
   - `detail` is a human-readable supporting statistic.
-- **GameInfo:** `{ slug, name, categories: slug[], description?, minPlayers?, maxPlayers?, timesPlayed?, timesNominated?, lastPlayed?: { tournament, gameNumber, playedAt? }, available? }`
+- **GameInfo:** `{ slug, name, categories: slug[], description?, minPlayers?, maxPlayers?, timesPlayed?, timesNominated?, lastPlayed?: { tournament, gameNumber, playedAt? }, available?, url? }`
   - A game may belong to several categories.
 - **PlayerSummary:** `{ slug, name, initials?, avatarUrl?, firstTournament?, tournamentsPlayed?, ultimateGamerWins?, challengerAppearances?, gameWins?, podiumFinishes?, awardCount?, bestPlacement?, current?: { tournament, rank, points }, discord?: { id, username?, displayName? } }`
   - `avatarUrl` is an `https:` URL, or a path relative to the data URL for pictures hosted with the data (for example `avatars/tnoy.jpg` or `avatars/tnoy.discord.png`). Anything else is ignored. The admin picks it in this order: an uploaded picture, a picture link, the Discord picture; without any, the site shows initials.

@@ -77,7 +77,11 @@
 			{@const dates = formatDateRange(tournament.startDate, tournament.endDate)}
 			{@const hasNext = !!tournament.nextSelection || !!tournament.nextNemeses}
 			<header class="head">
-				<p class="eyebrow">{tournament.edition ?? 'Tournament'}</p>
+				<p class="eyebrow">
+					{tournament.tags?.length
+						? tournament.tags.join(' · ')
+						: (tournament.edition ?? 'Tournament')}
+				</p>
 				<div class="title-row">
 					<h1>{tournament.name}</h1>
 					<ShareButton
@@ -139,8 +143,14 @@
 					{#if tournament.categories.length}
 						{#if tournament.categoriesPlanned}
 							<p class="subtle progress">
-								<span class="num">{tournament.categoriesCompleted ?? 0}</span> of
-								<span class="num">{tournament.categoriesPlanned}</span> categories played.
+								{#if (tournament.lap ?? 1) > 1}
+									Lap <span class="num">{tournament.lap}</span>: all
+									<span class="num">{tournament.categoriesPlanned}</span> categories played, so the order
+									starts over until someone wins.
+								{:else}
+									<span class="num">{tournament.categoriesCompleted ?? 0}</span> of
+									<span class="num">{tournament.categoriesPlanned}</span> categories played.
+								{/if}
 								{#if tournament.games.length}Pick a game to see its results.{/if}
 							</p>
 						{/if}
